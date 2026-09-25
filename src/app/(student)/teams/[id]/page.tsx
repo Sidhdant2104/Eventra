@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TeamTools } from "@/components/team-tools";
-import { StatusBadge } from "@/components/ui";
+import { Avatar, ButtonLink, StatusBadge } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/permissions";
 import { appUrl } from "@/lib/utils";
@@ -43,19 +43,22 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
         <ul className="mt-3">
           {team.members.map((member) => (
             <li key={member.id} className="flex items-center justify-between gap-3 border-t border-line py-3 text-sm">
-              <span className="font-medium">{member.user.name}</span>
+              <span className="flex items-center gap-3 font-medium"><Avatar name={member.user.name} />{member.user.name}</span>
               <span className="text-muted">{member.userId === team.captainId ? "Captain" : "Joined"}</span>
             </li>
           ))}
           {team.invitations.map((invitation) => (
             <li key={invitation.id} className="flex items-center justify-between gap-3 border-t border-line py-3 text-sm text-secondary">
-              <span>{invitation.invitee?.name ?? invitation.email}</span>
+              <span className="flex items-center gap-3"><Avatar name={invitation.invitee?.name ?? invitation.email} />{invitation.invitee?.name ?? invitation.email}</span>
               <span>Pending</span>
             </li>
           ))}
         </ul>
       </div>
-      {participant ? <Link className="inline-block font-semibold text-brand" href={`/registrations/${participant.id}`}>View your pass · {team.registration?.code}</Link> : null}
+      <div className="flex flex-wrap gap-3">
+        {participant ? <ButtonLink href={`/registrations/${participant.id}`} variant="ink">View pass</ButtonLink> : null}
+        <ButtonLink href={`/events/${team.event.slug}`} variant="outline">View event</ButtonLink>
+      </div>
       <TeamTools
         teamId={team.id}
         captain={team.captainId === user.id}

@@ -20,7 +20,8 @@ export default async function EventAdminLayout({ children, params }: { children:
       <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-4xl sm:text-5xl">{access.event.name}</h1>
-          <p className="mt-2 text-sm text-secondary">{formatDay(access.event.startAt)} · {registered} registrations · {checked} checked in</p>
+          <p className="mt-3 text-sm text-secondary">{formatDay(access.event.startAt)}</p>
+          <p className="mt-1 text-sm"><span className="font-medium">{registered}</span> registrations · <span className="font-medium">{checked}</span> checked in</p>
         </div>
         <div className="flex gap-2 text-sm">
           <Link className="border border-line bg-surface px-3 py-2" href={`/events/${access.event.slug}`}>View event</Link>

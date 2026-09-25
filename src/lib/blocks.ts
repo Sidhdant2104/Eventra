@@ -55,7 +55,7 @@ function list(value: unknown, map: (item: Record<string, unknown>) => Record<str
 export function defaultContent(type: BlockType): Record<string, unknown> {
   switch (type) {
     case "HERO":
-      return { eyebrow: "", title: "", subtitle: "", image: "" };
+      return { eyebrow: "", title: "", subtitle: "", image: "", accent: "", mood: "" };
     case "ABOUT":
       return { heading: "About the event", body: "", image: "" };
     case "RICH_TEXT":
@@ -92,7 +92,14 @@ export function sanitizeSection(type: string, content: unknown) {
   const source = content && typeof content === "object" ? (content as Record<string, unknown>) : {};
   switch (type as BlockType) {
     case "HERO":
-      return { eyebrow: str(source.eyebrow, 140), title: str(source.title, 180), subtitle: str(source.subtitle, 500), image: str(source.image, 500) };
+      return {
+        eyebrow: str(source.eyebrow, 140),
+        title: str(source.title, 180),
+        subtitle: str(source.subtitle, 500),
+        image: str(source.image, 500),
+        accent: /^#[0-9a-fA-F]{6}$/.test(str(source.accent, 7)) ? str(source.accent, 7) : "",
+        mood: source.mood === "light" || source.mood === "dark" ? source.mood : "",
+      };
     case "ABOUT":
       return { heading: str(source.heading, 160), body: str(source.body, 4000), image: str(source.image, 500) };
     case "RICH_TEXT":

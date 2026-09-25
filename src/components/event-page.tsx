@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { EventVisual } from "@/components/event-card";
+import { EventMedia } from "@/components/event-card";
 import { Logo } from "@/components/logo";
-import { ButtonLink } from "@/components/ui";
+import { resolveEventTheme, type EventTheme } from "@/lib/event-theme";
 import { formatDay, formatWhen } from "@/lib/format";
 import { registrationOpen, youtubeEmbed } from "@/lib/utils";
 
@@ -65,6 +65,9 @@ export function EventPageView({
   draft?: boolean;
   preview?: boolean;
 }) {
+  const heroSection = event.sections.find((section) => section.type === "HERO" && section.visible);
+  const heroData = record(heroSection?.content);
+  const theme = resolveEventTheme(event.category, text(heroData.accent), text(heroData.mood));
   const open = registrationOpen(event);
   const registerHref = participantId
     ? `/registrations/${participantId}`
@@ -77,22 +80,22 @@ export function EventPageView({
   const canAct = Boolean(participantId) || open;
 
   return (
-    <div className="bg-background text-ink">
+    <div className="event-site bg-background text-ink" style={{ background: "var(--color-background)" }}>
       {preview ? null : (
         <header className="sticky top-0 z-40 border-b border-white/10 bg-ink/90 text-white backdrop-blur">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
             <Logo light href="/" />
             <p className="hidden truncate text-sm text-white/60 sm:block">{event.name}</p>
-            <ButtonLink href={registerHref} size="sm" variant={canAct ? "primary" : "outline"} className={canAct ? "" : "pointer-events-none opacity-50"}>
+            <Link href={registerHref} className={`inline-flex h-9 items-center px-3.5 text-[13px] font-medium text-white ${canAct ? "" : "pointer-events-none opacity-50"}`} style={{ background: canAct ? theme.accent : "#3c4048" }}>
               {cta}
-            </ButtonLink>
+            </Link>
           </div>
         </header>
       )}
       {draft ? <div className="bg-[#fff4df] px-4 py-2 text-center text-sm text-warn">Draft preview. Students cannot see this page until it is published.</div> : null}
       <main id={preview ? undefined : "content"}>
         {event.sections.filter((section) => section.visible).map((section) => (
-          <Block key={section.id} section={section} event={event} registerHref={registerHref} cta={cta} open={canAct} />
+          <Block key={section.id} section={section} event={event} registerHref={registerHref} cta={cta} open={canAct} theme={theme} />
         ))}
       </main>
       {preview ? null : (
@@ -104,7 +107,7 @@ export function EventPageView({
             </div>
           </footer>
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-background/95 p-3 backdrop-blur md:hidden">
-            <ButtonLink href={registerHref} className={`w-full ${canAct ? "" : "pointer-events-none opacity-50"}`}>{cta}</ButtonLink>
+            <Link href={registerHref} className={`inline-flex h-12 w-full items-center justify-center text-[15px] font-medium text-white ${canAct ? "" : "pointer-events-none opacity-50"}`} style={{ background: theme.accent }}>{cta}</Link>
           </div>
         </>
       )}
@@ -112,27 +115,34 @@ export function EventPageView({
   );
 }
 
-function Block({ section, event, registerHref, cta, open }: { section: Section; event: EventModel; registerHref: string; cta: string; open: boolean }) {
+function Block({ section, event, registerHref, cta, open, theme }: { section: Section; event: EventModel; registerHref: string; cta: string; open: boolean; theme: EventTheme }) {
   const data = record(section.content);
   if (section.type === "HERO") {
     const image = text(data.image) || event.coverImage || "";
+    const title = text(data.title) || event.name;
+    const lines = stackLines(text(data.subtitle));
     return (
-      <section className="relative min-h-[88vh] overflow-hidden bg-ink text-white">
-        <EventVisual src={image} name={event.name} className="hero-media absolute inset-0 h-full w-full object-cover opacity-80" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/10" />
-        <div className="relative mx-auto flex min-h-[88vh] max-w-6xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6">
-          <p className="rise text-[12px] font-medium uppercase tracking-[0.22em] text-white/70">{text(data.eyebrow) || event.club.name}</p>
-          <h1 className="rise rise-delay mt-4 max-w-5xl font-display text-[12vw] text-white sm:text-7xl lg:text-8xl">{text(data.title) || event.name}</h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-white/80">{text(data.subtitle) || event.summary}</p>
-          <div className="mt-8 flex flex-wrap items-end justify-between gap-6">
-            <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-              <div><dt className="text-[11px] uppercase tracking-[0.16em] text-white/45">When</dt><dd className="mt-1">{formatWhen(event.startAt)}</dd></div>
-              <div><dt className="text-[11px] uppercase tracking-[0.16em] text-white/45">Where</dt><dd className="mt-1">{event.venue || event.mode.toLowerCase()}</dd></div>
-              <div><dt className="text-[11px] uppercase tracking-[0.16em] text-white/45">Register by</dt><dd className="mt-1">{formatDay(event.registrationDeadline)}</dd></div>
-            </dl>
-            {open ? <ButtonLink href={registerHref} size="lg" className="w-full sm:w-auto">{cta}</ButtonLink> : null}
-          </div>
+      <section className="grid lg:min-h-[640px] lg:grid-cols-[1.05fr_0.95fr]" style={{ background: theme.bg, color: theme.fg }}>
+        <div className="flex flex-col justify-center px-4 py-14 sm:px-8 lg:py-16">
+          <p className="rise text-[12px] font-medium uppercase tracking-[0.22em] opacity-60">{text(data.eyebrow) || event.club.name}</p>
+          <h1 className="rise rise-delay mt-4 max-w-3xl font-display text-5xl sm:text-7xl lg:text-[5.2rem]">{title}</h1>
+          {lines ? (
+            <p className="mt-6 font-display text-3xl leading-none sm:text-4xl" style={{ color: theme.accent }}>
+              {lines.map((line) => <span key={line} className="block">{line}</span>)}
+            </p>
+          ) : (
+            <p className="mt-5 max-w-md text-[16px] leading-7 opacity-75">{text(data.subtitle) || event.summary}</p>
+          )}
+          <dl className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+            <div><dt className="text-[11px] uppercase tracking-[0.16em] opacity-50">When</dt><dd className="mt-1">{formatWhen(event.startAt)}</dd></div>
+            <div><dt className="text-[11px] uppercase tracking-[0.16em] opacity-50">Where</dt><dd className="mt-1">{event.venue || event.mode.toLowerCase()}</dd></div>
+            <div><dt className="text-[11px] uppercase tracking-[0.16em] opacity-50">Register by</dt><dd className="mt-1">{formatDay(event.registrationDeadline)}</dd></div>
+          </dl>
+          {open ? (
+            <Link href={registerHref} className="mt-8 inline-flex h-12 w-full items-center justify-center px-6 text-[15px] font-medium text-white sm:w-fit" style={{ background: theme.accent }}>{cta}</Link>
+          ) : null}
         </div>
+        <EventMedia src={image} name={event.name} category={event.category} className="hero-media min-h-[280px] w-full object-cover lg:min-h-full" />
       </section>
     );
   }
@@ -151,8 +161,27 @@ function Block({ section, event, registerHref, cta, open }: { section: Section; 
     );
   }
   if (section.type === "RICH_TEXT") {
+    const parts = text(data.body).split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      return (
+        <section className="border-t border-line px-4 py-16 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <Kicker>Why it matters</Kicker>
+            <h2 className="mt-3 font-display text-5xl">{text(data.heading) || "Why participate"}</h2>
+            <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {parts.slice(0, 4).map((part, index) => (
+                <article key={index} className="border-t pt-4" style={{ borderColor: theme.accent }}>
+                  <p className="font-display text-4xl" style={{ color: theme.accent }}>{String(index + 1).padStart(2, "0")}</p>
+                  <p className="mt-3 text-[15px] leading-7 text-secondary">{part}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
     return (
-      <section className="border-t border-line px-4 py-20 sm:px-6">
+      <section className="border-t border-line px-4 py-16 sm:px-6">
         <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-[0.7fr_1.3fr]">
           <h2 className="font-display text-4xl sm:text-5xl">{text(data.heading)}</h2>
           <Paragraphs value={text(data.body)} large />
@@ -206,7 +235,7 @@ function Block({ section, event, registerHref, cta, open }: { section: Section; 
               <article key={index}>
                 {text(person.image) ? <img src={text(person.image)} alt="" className="mb-4 aspect-[4/5] w-full object-cover" /> : <div className="mb-4 grid aspect-[4/5] place-items-end bg-ink p-4 text-white"><span className="font-display text-7xl">{text(person.name).slice(0, 1)}</span></div>}
                 <h3 className="text-2xl font-medium tracking-[-0.03em]">{text(person.name)}</h3>
-                <p className="mt-1 text-sm text-accent">{text(person.role)}</p>
+                <p className="mt-1 text-sm" style={{ color: theme.accent }}>{text(person.role)}</p>
                 {text(person.bio) ? <p className="mt-3 text-sm leading-6 text-secondary">{text(person.bio)}</p> : null}
               </article>
             ))}
@@ -225,7 +254,7 @@ function Block({ section, event, registerHref, cta, open }: { section: Section; 
         <ol className="mt-10">
           {items.map((item, index) => (
             <li key={index} className="grid gap-2 border-t border-line py-6 sm:grid-cols-[140px_1fr] sm:gap-10">
-              <p className="text-sm font-medium text-accent">{text(item.time) || String(index + 1).padStart(2, "0")}</p>
+              <p className="text-sm font-medium" style={{ color: theme.accent }}>{text(item.time) || String(index + 1).padStart(2, "0")}</p>
               <div>
                 <h3 className="text-2xl font-medium tracking-[-0.03em]">{text(item.title)}</h3>
                 <p className="mt-2 max-w-xl text-[15px] leading-7 text-secondary">{text(item.description)}</p>
@@ -241,25 +270,25 @@ function Block({ section, event, registerHref, cta, open }: { section: Section; 
     if (prizes.length === 0) return null;
     const [first, ...rest] = prizes;
     return (
-      <section className="bg-ink px-4 py-20 text-white sm:px-6">
+      <section className="px-4 py-16 sm:px-6" style={{ background: theme.bg, color: theme.fg }}>
         <div className="mx-auto max-w-6xl">
-          <Kicker><span className="text-white/50">Prizes</span></Kicker>
+          <Kicker><span className="opacity-50">Prizes</span></Kicker>
           <h2 className="mt-3 font-display text-5xl">{text(data.heading) || "What you can win"}</h2>
           {first ? (
-            <article className="mt-12 border-t border-white/15 pt-8">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">{text(first.place) || "Grand prize"}</p>
-              <p className="mt-3 font-display text-6xl text-white sm:text-8xl">{text(first.reward)}</p>
+            <article className="mt-12 border-t border-current/20 pt-8">
+              <p className="text-[11px] uppercase tracking-[0.18em] opacity-50">{text(first.place) || "Grand prize"}</p>
+              <p className="mt-3 font-display text-6xl sm:text-8xl" style={{ color: theme.accent }}>{text(first.reward)}</p>
               <h3 className="mt-3 text-2xl">{text(first.title)}</h3>
-              <p className="mt-2 max-w-lg text-white/70">{text(first.description)}</p>
+              <p className="mt-2 max-w-lg opacity-70">{text(first.description)}</p>
             </article>
           ) : null}
           <div className="mt-10 grid gap-8 sm:grid-cols-2">
             {rest.map((prize, index) => (
-              <article key={index} className="border-t border-white/15 pt-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">{text(prize.place)}</p>
+              <article key={index} className="border-t border-current/20 pt-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] opacity-50">{text(prize.place)}</p>
                 <p className="mt-2 font-display text-4xl">{text(prize.reward)}</p>
                 <h3 className="mt-2 text-lg">{text(prize.title)}</h3>
-                <p className="mt-2 text-sm text-white/65">{text(prize.description)}</p>
+                <p className="mt-2 text-sm opacity-70">{text(prize.description)}</p>
               </article>
             ))}
           </div>
@@ -338,14 +367,15 @@ function Block({ section, event, registerHref, cta, open }: { section: Section; 
   }
   if (section.type === "REGISTRATION_CTA") {
     return (
-      <section className="bg-ink px-4 py-20 text-white sm:px-6">
+      <section className="px-4 py-16 sm:px-6" style={{ background: theme.mood === "light" ? "#121316" : theme.bg, color: "#f6f4ef" }}>
         <div className="mx-auto flex max-w-6xl flex-col justify-between gap-8 md:flex-row md:items-end">
           <div>
-            <h2 className="max-w-xl font-display text-5xl sm:text-7xl">{text(data.heading) || "Register now"}</h2>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Ready to participate?</p>
+            <h2 className="mt-3 max-w-xl font-display text-5xl text-white sm:text-7xl">{text(data.heading) || "Register now"}</h2>
             <p className="mt-4 max-w-md text-white/70">{text(data.body) || "Your NMIET profile is already on file."}</p>
           </div>
           <div>
-            {open ? <ButtonLink href={registerHref} size="lg">{text(data.buttonLabel) || cta}</ButtonLink> : <p className="text-sm text-white/60">Registration is closed.</p>}
+            {open ? <Link href={registerHref} className="inline-flex h-12 items-center px-6 text-[15px] font-medium text-white" style={{ background: theme.accent }}>{text(data.buttonLabel) || cta}</Link> : <p className="text-sm text-white/60">Registration is closed.</p>}
             {event.registrationMode !== "SOLO" ? <p className="mt-4 text-sm"><Link className="underline" href={loggedInHref(event.slug, registerHref)}>Team registration is available.</Link></p> : null}
           </div>
         </div>
@@ -353,6 +383,13 @@ function Block({ section, event, registerHref, cta, open }: { section: Section; 
     );
   }
   return null;
+}
+
+function stackLines(value: string) {
+  const lines = value.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2 || lines.length > 4) return null;
+  if (lines.some((line) => line.length > 28)) return null;
+  return lines;
 }
 
 function loggedInHref(slug: string, fallback: string) {

@@ -65,7 +65,7 @@ export function Scanner({ eventId }: { eventId: string }) {
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,460px)_1fr]">
       <div>
-        <div id={regionId} className="min-h-[280px] overflow-hidden bg-ink" />
+        <div id={regionId} className="min-h-[320px] overflow-hidden bg-ink sm:min-h-[420px]" />
         {cameraError ? <p className="mt-3 text-sm text-muted">{cameraError}</p> : <p className="mt-3 text-sm text-muted">Hold the pass inside the frame.</p>}
         <form className="mt-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); void submit(manual); }}>
           <Input value={manual} onChange={(event) => setManual(event.target.value)} placeholder="Or paste a pass link" aria-label="Pass token" />

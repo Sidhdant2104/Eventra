@@ -144,6 +144,19 @@ export async function updateRegistrationStatus(eventId: string, registrationId: 
   return { ok: true as const };
 }
 
+export async function bulkUpdateRegistrationStatus(
+  eventId: string,
+  registrationIds: string[],
+  status: "CONFIRMED" | "WAITLISTED" | "CANCELLED" | "ATTENDED",
+) {
+  const unique = [...new Set(registrationIds)].slice(0, 100);
+  for (const registrationId of unique) {
+    const result = await updateRegistrationStatus(eventId, registrationId, status);
+    if (!result.ok) return result;
+  }
+  return { ok: true as const };
+}
+
 async function notifyManySafe(userIds: string[], eventName: string, code: string) {
   await Promise.all(userIds.map((userId) => notifyUser({
     userId,

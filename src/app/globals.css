@@ -81,6 +81,14 @@ body {
   animation: settle 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
+.event-card-media {
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.group:hover .event-card-media {
+  transform: scale(1.035);
+}
+
 @media print {
   header,
   nav,

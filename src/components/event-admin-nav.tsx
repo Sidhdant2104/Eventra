@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "", label: "Overview", scan: true },
-  { href: "/builder", label: "Event page", scan: false },
+  { href: "/builder", label: "Page", scan: false },
   { href: "/registrations", label: "Registrations", scan: false },
   { href: "/teams", label: "Teams", scan: false },
   { href: "/attendance", label: "Attendance", scan: true },

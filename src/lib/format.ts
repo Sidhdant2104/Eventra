@@ -42,6 +42,13 @@ export function parseCollegeDateTime(value: string) {
   return date;
 }
 
+export function greeting(now = new Date()) {
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "numeric", hourCycle: "h23" }).format(now));
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export function yearLabel(year: string | null | undefined) {
   switch (year) {
     case "FE":

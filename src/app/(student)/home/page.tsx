@@ -3,6 +3,7 @@ import { EventCard } from "@/components/event-card";
 import { ButtonLink, EmptyState } from "@/components/ui";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { prisma } from "@/lib/db";
+import { greeting } from "@/lib/format";
 import { requireUser } from "@/lib/permissions";
 import { isProfileComplete } from "@/lib/utils";
 
@@ -10,85 +11,128 @@ export const metadata = { title: "Home" };
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [registrations, teams, certificates, events, clubs] = await Promise.all([
-    prisma.registrationParticipant.count({ where: { userId: user.id, registration: { status: { not: "CANCELLED" } } } }),
-    prisma.teamMember.count({ where: { userId: user.id } }),
-    prisma.certificate.count({ where: { userId: user.id, revokedAt: null } }),
-    prisma.event.findMany({ where: { status: "PUBLISHED", endAt: { gte: new Date() } }, include: { club: true }, orderBy: [{ featured: "desc" }, { startAt: "asc" }], take: 6 }),
-    prisma.club.findMany({ orderBy: { name: "asc" }, take: 6 }),
+  const [mine, teams, certificates, events] = await Promise.all([
+    prisma.registrationParticipant.findMany({
+      where: { userId: user.id, registration: { status: { not: "CANCELLED" } } },
+      include: { registration: { include: { event: { include: { club: true } }, team: true } }, pass: true },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    }),
+    prisma.teamMember.findMany({
+      where: { userId: user.id },
+      include: { team: { include: { event: true, members: { include: { user: true } }, captain: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 2,
+    }),
+    prisma.certificate.findMany({
+      where: { userId: user.id, revokedAt: null },
+      include: { event: { include: { club: true } } },
+      orderBy: { issuedAt: "desc" },
+      take: 2,
+    }),
+    prisma.event.findMany({
+      where: { status: "PUBLISHED", endAt: { gte: new Date() } },
+      include: { club: true },
+      orderBy: [{ featured: "desc" }, { startAt: "asc" }],
+      take: 6,
+    }),
   ]);
-  const featured = events.find((event) => event.featured) ?? events[0];
-  const upcoming = events.filter((event) => event.id !== featured?.id);
+  const registeredIds = new Set(mine.map((row) => row.registration.eventId));
+  const nextMine = mine.find((row) => row.registration.event.endAt >= new Date());
+  const spotlight = nextMine?.registration.event ?? events[0];
+  const discover = events.filter((event) => event.id !== spotlight?.id && !registeredIds.has(event.id)).slice(0, 4);
+  const first = user.name.split(" ")[0];
+
   return (
     <div className="space-y-14">
       <section>
-        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted">NMIET One</p>
-        <h1 className="mt-3 max-w-3xl font-display text-5xl sm:text-7xl">Discover what&apos;s happening across campus.</h1>
-        <form action="/explore" className="mt-8 max-w-xl">
-          <label className="sr-only" htmlFor="campus-search">Search events</label>
-          <input id="campus-search" name="q" placeholder="Search events, clubs, workshops..." className="h-14 w-full border-b border-ink bg-transparent text-lg outline-none placeholder:text-muted" />
-        </form>
+        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted">{greeting()}</p>
+        <h1 className="mt-2 font-display text-5xl sm:text-6xl">{first}.</h1>
+        <p className="mt-3 max-w-xl text-[16px] leading-7 text-secondary">Here&apos;s what&apos;s happening around campus.</p>
         {!isProfileComplete(user) ? (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border border-line bg-surface px-4 py-3">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border border-line bg-surface px-4 py-3">
             <p className="text-sm text-secondary">Finish your profile once. After that, registration is a confirmation.</p>
             <ButtonLink href="/profile?complete=1" size="sm" variant="ink">Complete profile</ButtonLink>
           </div>
         ) : null}
       </section>
 
-      {featured ? (
-        <section>
-          <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Featured</p>
-          <EventCard event={featured} layout="feature" />
-        </section>
-      ) : <EmptyState title="Campus is quiet" body="When a club publishes an event, it will take over this page." action={<ButtonLink href="/explore">Explore</ButtonLink>} />}
+      <section>
+        <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Upcoming for you</p>
+        {spotlight ? <EventCard event={spotlight} layout="featured" /> : <EmptyState title="Campus is quiet" body="When a club publishes an event, it will show up here." action={<ButtonLink href="/explore">Explore</ButtonLink>} />}
+        {nextMine?.pass ? <Link href={`/registrations/${nextMine.id}`} className="mt-3 inline-block text-sm font-medium">Open your pass →</Link> : null}
+      </section>
 
-      {upcoming.length > 0 ? (
+      <section>
+        <div className="mb-4 flex items-end justify-between">
+          <h2 className="font-display text-4xl">My events</h2>
+          <Link href="/registrations" className="text-sm font-medium">All</Link>
+        </div>
+        {mine.length === 0 ? <p className="text-sm text-muted">You have not registered yet.</p> : mine.map((row) => (
+          <Link key={row.id} href={row.pass ? `/registrations/${row.id}` : `/events/${row.registration.event.slug}`} className="grid gap-1 border-t border-line py-4 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">{row.registration.event.club.name}</p>
+              <h3 className="mt-1 text-xl font-medium tracking-[-0.03em]">{row.registration.event.name}</h3>
+            </div>
+            <span className="text-sm text-secondary">{row.pass ? "View pass" : row.registration.status.toLowerCase()}</span>
+          </Link>
+        ))}
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-end justify-between">
+          <h2 className="font-display text-4xl">Your teams</h2>
+          <Link href="/teams" className="text-sm font-medium">All</Link>
+        </div>
+        {teams.length === 0 ? <p className="text-sm text-muted">You haven&apos;t joined a team yet.</p> : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {teams.map((membership) => (
+              <Link key={membership.id} href={`/teams/${membership.teamId}`} className="border border-line bg-surface p-5">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-muted">{membership.team.event.name}</p>
+                <h3 className="mt-2 text-2xl font-medium tracking-[-0.03em]">{membership.team.name}</h3>
+                <p className="mt-3 text-sm text-secondary">{membership.team.members.length} members · Captain {membership.team.captain.name.split(" ")[0]}</p>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-end justify-between">
+          <h2 className="font-display text-4xl">Your certificates</h2>
+          <Link href="/certificates" className="text-sm font-medium">Archive</Link>
+        </div>
+        {certificates.length === 0 ? <p className="text-sm text-muted">Your achievements will appear here.</p> : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {certificates.map((certificate) => (
+              <Link key={certificate.id} href={`/certificates/${certificate.id}`} className="bg-ink p-5 text-white">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/50">{certificate.event.club.name}</p>
+                <h3 className="mt-4 font-display text-4xl text-white">{certificate.event.name}</h3>
+                <p className="mt-4 text-sm text-accent">View certificate</p>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {discover.length > 0 ? (
         <section>
           <div className="mb-5 flex items-end justify-between">
-            <h2 className="font-display text-4xl sm:text-5xl">Upcoming</h2>
-            <Link href="/explore?when=upcoming" className="text-sm font-medium">All upcoming</Link>
+            <h2 className="font-display text-4xl">Discover</h2>
+            <Link href="/explore" className="text-sm font-medium">Explore</Link>
           </div>
-          <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 snap-x sm:mx-0 sm:px-0">
-            {upcoming.map((event) => <div key={event.id} className="w-[68vw] max-w-[280px] shrink-0 sm:w-auto sm:max-w-none sm:flex-1"><EventCard event={event} /></div>)}
+          <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0">
+            {discover.map((event) => <div key={event.id} className="w-[68vw] max-w-[260px] shrink-0 sm:w-auto sm:max-w-none"><EventCard event={event} layout="compact" /></div>)}
           </div>
         </section>
       ) : null}
 
       <section>
-        <h2 className="font-display text-4xl sm:text-5xl">Explore by category</h2>
-        <div className="mt-6 grid grid-cols-2 gap-px bg-line sm:grid-cols-4">
+        <h2 className="font-display text-4xl">Explore by category</h2>
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
           {EVENT_CATEGORIES.map((category) => (
-            <Link key={category} href={`/explore?category=${encodeURIComponent(category)}`} className="bg-background px-4 py-6 text-lg font-medium tracking-[-0.03em] transition hover:bg-surface">
+            <Link key={category} href={`/explore?category=${encodeURIComponent(category)}`} className="border-b border-line py-4 text-lg font-medium tracking-[-0.03em] hover:text-accent">
               {category}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="font-display text-4xl sm:text-5xl">Your activity</h2>
-        <div className="mt-6 grid border border-line sm:grid-cols-3">
-          {[
-            ["/registrations", "Registrations", registrations],
-            ["/teams", "Teams", teams],
-            ["/certificates", "Certificates", certificates],
-          ].map(([href, label, value]) => (
-            <Link key={String(href)} href={String(href)} className="border-b border-line px-5 py-6 last:border-b-0 hover:bg-surface sm:border-b-0 sm:border-r sm:last:border-r-0">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted">{label}</p>
-              <p className="mt-2 font-display text-5xl">{value}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="font-display text-4xl sm:text-5xl">Clubs</h2>
-        <div className="mt-6 divide-y divide-line border-y border-line">
-          {clubs.map((club) => (
-            <Link key={club.id} href={`/explore?club=${club.slug}`} className="flex items-baseline justify-between gap-4 py-4 hover:text-accent">
-              <span className="text-xl font-medium tracking-[-0.03em]">{club.name}</span>
-              <span className="text-sm text-muted">View events</span>
             </Link>
           ))}
         </div>

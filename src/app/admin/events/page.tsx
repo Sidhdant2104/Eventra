@@ -6,14 +6,18 @@ import { requireAdmin } from "@/lib/permissions";
 
 export const metadata = { title: "Events" };
 
-export default async function AdminEventsPage() {
+export default async function AdminEventsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await requireAdmin();
+  const query = (await searchParams).q?.trim() ?? "";
   const events = await prisma.event.findMany({
-    where: user.role === "SUPER_ADMIN" ? {} : {
-      OR: [
-        { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" } } } },
-        { staff: { some: { userId: user.id } } },
-      ],
+    where: {
+      ...(query ? { name: { contains: query, mode: "insensitive" } } : {}),
+      ...(user.role === "SUPER_ADMIN" ? {} : {
+        OR: [
+          { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" } } } },
+          { staff: { some: { userId: user.id } } },
+        ],
+      }),
     },
     include: { club: true, _count: { select: { participants: true } } },
     orderBy: { startAt: "desc" },
@@ -25,13 +29,13 @@ export default async function AdminEventsPage() {
         <h1 className="font-display text-5xl">Events</h1>
         {canCreate ? <ButtonLink href="/admin/events/new">New event</ButtonLink> : null}
       </div>
-      <div className="mt-6 overflow-x-auto rounded-3xl border border-line bg-card">
+      <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="text-muted"><tr><th className="px-4 py-3">Event</th><th>Club</th><th>Date</th><th>People</th><th>Status</th></tr></thead>
+          <thead className="text-[11px] uppercase tracking-[0.14em] text-muted"><tr><th className="py-3 font-medium">Event</th><th className="font-medium">Club</th><th className="font-medium">Date</th><th className="font-medium">People</th><th className="font-medium">Status</th></tr></thead>
           <tbody>
             {events.map((event) => (
-              <tr key={event.id} className="border-t border-line">
-                <td className="px-4 py-3 font-medium"><Link href={`/admin/events/${event.id}`}>{event.name}</Link></td>
+              <tr key={event.id} className="border-t border-line hover:bg-white">
+                <td className="py-3 font-medium"><Link href={`/admin/events/${event.id}`}>{event.name}</Link></td>
                 <td>{event.club.name}</td>
                 <td>{formatDay(event.startAt)}</td>
                 <td>{event._count.participants}</td>
@@ -40,6 +44,7 @@ export default async function AdminEventsPage() {
             ))}
           </tbody>
         </table>
+        {events.length === 0 ? <p className="border-t border-line py-8 text-sm text-muted">No events match that search.</p> : null}
       </div>
     </div>
   );

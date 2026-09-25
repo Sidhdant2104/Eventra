@@ -22,6 +22,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
         <Link href="/certificates" className="text-sm font-medium">All certificates</Link>
         <PrintButton />
       </div>
+      <div className="bg-[#eceae4] p-3 sm:p-8 print:bg-white print:p-0">
       <CertificateArt
         publicId={certificate.publicId}
         recipient={certificate.user.name}
@@ -33,6 +34,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
         backgroundUrl={certificate.template.backgroundUrl}
         config={config}
       />
+      </div>
       <p className="text-center text-sm text-muted print:hidden">Anyone can verify this at <Link className="font-medium text-ink" href={`/verify/${certificate.publicId}`}>/verify/{certificate.publicId}</Link></p>
     </div>
   );

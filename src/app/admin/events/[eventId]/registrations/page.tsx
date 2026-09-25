@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { StatusSelect } from "@/components/status-select";
-import { Avatar, EmptyState, Input, Select } from "@/components/ui";
+import { RegistrationTable } from "@/components/registration-table";
+import { EmptyState, Input, Select } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { formatWhen, yearLabel } from "@/lib/format";
 import { requireEventAccess } from "@/lib/permissions";
@@ -60,47 +60,25 @@ export default async function RegistrationsAdminPage({
       {people.length === 0 ? (
         <EmptyState title="No one has registered yet" body="Share your event page and watch the list grow. Department, team, and check-in time will show up here." />
       ) : (
-        <div className="overflow-x-auto border border-line bg-surface">
-          <table className="w-full min-w-[880px] text-left text-sm">
-            <thead className="text-[11px] uppercase tracking-[0.14em] text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Participant</th>
-                <th className="py-3 font-medium">Registration</th>
-                <th className="py-3 font-medium">Department</th>
-                <th className="py-3 font-medium">Year</th>
-                <th className="py-3 font-medium">Team</th>
-                <th className="py-3 font-medium">Status</th>
-                <th className="py-3 font-medium">Attendance</th>
-                <th className="py-3 pr-4 font-medium">Registered</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map(({ row, person }) => {
-                const checked = row.attendance.find((item) => item.userId === person.id);
-                return (
-                  <tr key={`${row.id}-${person.id}`} className="border-t border-line">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={person.name} />
-                        <div>
-                          <p className="font-medium">{person.name}</p>
-                          <p className="text-xs text-muted">{person.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3">{row.code}</td>
-                    <td className="py-3">{person.profile?.department ?? "—"}</td>
-                    <td className="py-3">{yearLabel(person.profile?.year)}</td>
-                    <td className="py-3">{row.team?.name ?? "—"}</td>
-                    <td className="py-3"><StatusSelect eventId={eventId} registrationId={row.id} status={row.status} /></td>
-                    <td className="py-3">{checked ? formatWhen(checked.checkedInAt) : "Not checked in"}</td>
-                    <td className="py-3 pr-4 text-muted">{formatWhen(row.createdAt)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <RegistrationTable
+          eventId={eventId}
+          rows={visible.map(({ row, person }) => {
+            const checked = row.attendance.find((item) => item.userId === person.id);
+            return {
+              key: `${row.id}-${person.id}`,
+              registrationId: row.id,
+              name: person.name,
+              email: person.email,
+              code: row.code,
+              department: person.profile?.department ?? "—",
+              year: yearLabel(person.profile?.year),
+              team: row.team?.name ?? "—",
+              status: row.status,
+              attendance: checked ? formatWhen(checked.checkedInAt) : "Not checked in",
+              registeredAt: formatWhen(row.createdAt),
+            };
+          })}
+        />
       )}
       {pageCount > 1 ? (
         <div className="mt-4 flex gap-3 text-sm">

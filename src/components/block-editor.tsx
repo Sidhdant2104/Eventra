@@ -180,6 +180,20 @@ function BlockFields({ section, onChange }: { section: EditorSection; onChange: 
       ) : (
         <Field key={field.key} label={field.label} value={value(field.key)} onChange={(next) => onChange({ [field.key]: next })} />
       ))}
+      {section.type === "HERO" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block text-sm font-medium">Accent
+            <input type="color" className="mt-1.5 h-10 w-full border border-line bg-surface" value={value("accent") || "#ff3d1f"} onChange={(event) => onChange({ accent: event.target.value })} />
+          </label>
+          <label className="block text-sm font-medium">Mood
+            <select className="mt-1.5 h-10 w-full border border-line bg-surface px-2 text-sm" value={value("mood")} onChange={(event) => onChange({ mood: event.target.value })}>
+              <option value="">From category</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+        </div>
+      ) : null}
       {listKey ? (
         <Repeater
           label={listKey.label}

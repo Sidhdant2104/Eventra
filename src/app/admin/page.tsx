@@ -1,17 +1,10 @@
 import Link from "next/link";
 import { AdminChart } from "@/components/admin-chart";
 import { prisma } from "@/lib/db";
-import { formatWhen } from "@/lib/format";
+import { formatWhen, greeting } from "@/lib/format";
 import { requireAdmin } from "@/lib/permissions";
 
 export const metadata = { title: "Overview" };
-
-function greeting() {
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "numeric", hourCycle: "h23" }).format(new Date()));
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
 
 export default async function AdminHome() {
   const user = await requireAdmin();
@@ -35,25 +28,25 @@ export default async function AdminHome() {
     <div className="space-y-8">
       <div>
         <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{greeting()}</p>
-        <h1 className="mt-2 font-display text-4xl sm:text-5xl">{user.name.split(" ")[0]}.</h1>
-        <p className="mt-2 text-sm text-secondary">Campus activity across clubs you can manage.</p>
+        <h1 className="mt-2 font-display text-5xl">{user.name.split(" ")[0]}.</h1>
+        <p className="mt-2 max-w-lg text-[15px] text-secondary">Platform overview across the clubs you can manage. Open an event for registrations, attendance, and certificates.</p>
       </div>
-      <div className="grid border border-line bg-surface sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map(([label, value, href]) => (
-          <Link key={label} href={href} className="border-b border-line px-5 py-4 last:border-b-0 hover:bg-background sm:border-b-0 sm:border-r sm:last:border-r-0">
-            <p className="text-[12px] text-muted">{label}</p>
-            <p className="mt-2 font-display text-4xl">{value}</p>
+          <Link key={label} href={href} className="bg-[#f6f6f4] px-5 py-5 hover:bg-white">
+            <p className="text-[12px] uppercase tracking-[0.14em] text-muted">{label}</p>
+            <p className="mt-3 font-display text-5xl">{value}</p>
           </Link>
         ))}
       </div>
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="border border-line bg-surface p-5">
+      <div className="grid gap-10 xl:grid-cols-[1.1fr_0.9fr]">
+        <section>
           <h2 className="text-sm font-medium">Registrations by event</h2>
           <div className="mt-4">
             <AdminChart data={grouped.map((event) => ({ name: event.name.split(" ")[0] ?? event.name, registrations: event._count.participants }))} />
           </div>
         </section>
-        <section className="border border-line bg-surface p-5">
+        <section>
           <h2 className="text-sm font-medium">Upcoming events</h2>
           <ul className="mt-3">
             {upcomingEvents.map((event) => (
@@ -67,7 +60,7 @@ export default async function AdminHome() {
         </section>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="border border-line bg-surface p-5">
+        <section>
           <h2 className="text-sm font-medium">Recent registrations</h2>
           <ul className="mt-3 text-sm">
             {recent.map((row) => (
@@ -78,7 +71,7 @@ export default async function AdminHome() {
             ))}
           </ul>
         </section>
-        <section className="border border-line bg-surface p-5">
+        <section>
           <h2 className="text-sm font-medium">Recent activity</h2>
           <ul className="mt-3 text-sm">
             {announcements.map((item) => (

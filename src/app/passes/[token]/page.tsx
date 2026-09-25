@@ -6,11 +6,11 @@ export default async function PublicPassPage({ params }: { params: Promise<{ tok
   const { token } = await params;
   const pass = await prisma.qrPass.findUnique({
     where: { token },
-    include: { participant: { include: { user: true, registration: { include: { event: true, team: true } } } } },
+    include: { participant: { include: { user: true, registration: { include: { event: { include: { club: true } }, team: true } } } } },
   });
   if (!pass) notFound();
   return (
-    <main id="content" className="min-h-screen bg-ink px-4 py-8">
+    <main id="content" className="flex min-h-screen items-center bg-background px-4 py-8">
       <PassCard
         token={pass.token}
         eventName={pass.participant.registration.event.name}
@@ -19,6 +19,9 @@ export default async function PublicPassPage({ params }: { params: Promise<{ tok
         code={pass.participant.registration.code}
         when={pass.participant.registration.event.startAt}
         status={pass.participant.registration.status}
+        venue={pass.participant.registration.event.venue}
+        clubName={pass.participant.registration.event.club.name}
+        category={pass.participant.registration.event.category}
       />
     </main>
   );

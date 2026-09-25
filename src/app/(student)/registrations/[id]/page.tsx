@@ -14,7 +14,7 @@ export default async function PassPage({ params, searchParams }: { params: Promi
   const user = await requireUser();
   const participant = await prisma.registrationParticipant.findFirst({
     where: { id, userId: user.id },
-    include: { pass: true, registration: { include: { event: true, team: true } }, user: true },
+    include: { pass: true, registration: { include: { event: { include: { club: true } }, team: true } }, user: true },
   });
   if (!participant?.pass) notFound();
   const canCancel = participant.registration.userId === user.id || participant.registration.team?.captainId === user.id;
@@ -36,6 +36,8 @@ export default async function PassPage({ params, searchParams }: { params: Promi
         when={participant.registration.event.startAt}
         status={participant.registration.status}
         venue={participant.registration.event.venue}
+        clubName={participant.registration.event.club.name}
+        category={participant.registration.event.category}
       />
       {canCancel && participant.registration.status !== "CANCELLED" ? (
         <form action={async () => { "use server"; await cancelRegistration(participant.registrationId); redirect("/registrations"); }} className="text-center">
