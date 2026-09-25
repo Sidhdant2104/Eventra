@@ -1,0 +1,507 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  SUPER_ADMIN
+  CLUB_ADMIN
+  EVENT_MANAGER
+  VOLUNTEER
+  STUDENT
+}
+
+enum ClubRole {
+  CLUB_ADMIN
+  MEMBER
+}
+
+enum StaffRole {
+  EVENT_MANAGER
+  VOLUNTEER
+}
+
+enum EventMode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum RegistrationMode {
+  SOLO
+  TEAM
+  BOTH
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  WAITLISTED
+  ATTENDED
+}
+
+enum TeamStatus {
+  FORMING
+  REGISTERED
+  CANCELLED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum CertificateType {
+  PARTICIPATION
+  WINNER
+  RUNNER_UP
+  VOLUNTEER
+  CUSTOM
+}
+
+enum NotificationType {
+  EVENT_PUBLISHED
+  REGISTRATION_SUCCESS
+  TEAM_INVITATION
+  TEAM_MEMBER_JOINED
+  DEADLINE_APPROACHING
+  EVENT_REMINDER
+  VENUE_CHANGED
+  EVENT_UPDATE
+  CERTIFICATE_AVAILABLE
+  ANNOUNCEMENT
+}
+
+enum AnnouncementAudience {
+  ALL_REGISTERED
+  CAPTAINS
+  ATTENDEES
+  SPECIFIC
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  SELECT
+  URL
+  NUMBER
+}
+
+enum FieldAppliesTo {
+  SOLO
+  TEAM
+  BOTH
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  name          String
+  image         String?
+  role          PlatformRole @default(STUDENT)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  accounts            Account[]
+  sessions            Session[]
+  profile             StudentProfile?
+  clubMembers         ClubMember[]
+  eventStaff          EventStaff[]
+  createdEvents       Event[]                    @relation("EventCreator")
+  ledTeams            Team[]                     @relation("TeamCaptain")
+  teamMembers         TeamMember[]
+  invitationsSent     TeamInvitation[]           @relation("Inviter")
+  invitationsReceived TeamInvitation[]           @relation("Invitee")
+  registrations       Registration[]             @relation("RegistrationOwner")
+  participants        RegistrationParticipant[]
+  attendance          Attendance[]               @relation("Attendee")
+  scans               Attendance[]               @relation("Scanner")
+  certificates        Certificate[]
+  notifications       Notification[]
+  announcements       Announcement[]             @relation("AnnouncementAuthor")
+  resetTokens         PasswordResetToken[]
+}
+
+model StudentProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone      String?
+  college    String   @default("NMIET")
+  department String?
+  year       String?
+  division   String?
+  rollNumber String?  @unique
+  skills     String?
+  bio        String?
+  linkedin   String?
+  github     String?
+  resumeUrl  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Club {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  logo        String?
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  members     ClubMember[]
+  events      Event[]
+}
+
+model ClubMember {
+  id        String   @id @default(cuid())
+  clubId    String
+  userId    String
+  role      ClubRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+  @@index([userId])
+}
+
+model Event {
+  id                   String           @id @default(cuid())
+  clubId               String
+  createdById          String
+  name                 String
+  slug                 String           @unique
+  summary              String
+  description          String?
+  coverImage           String?
+  startAt              DateTime
+  endAt                DateTime
+  registrationDeadline DateTime
+  venue                String?
+  mode                 EventMode
+  category             String
+  maxParticipants      Int?
+  registrationMode     RegistrationMode
+  minTeamSize          Int              @default(1)
+  maxTeamSize          Int              @default(4)
+  allowDuplicate       Boolean          @default(false)
+  featured             Boolean          @default(false)
+  status               EventStatus      @default(DRAFT)
+  registrationPrefix   String
+  registrationSeq      Int              @default(0)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  club             Club                      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy        User                      @relation("EventCreator", fields: [createdById], references: [id])
+  sections         EventSection[]
+  staff            EventStaff[]
+  fields           RegistrationField[]
+  registrations    Registration[]
+  participants     RegistrationParticipant[]
+  teams            Team[]
+  attendance       Attendance[]
+  templates        CertificateTemplate[]
+  certificates     Certificate[]
+  announcements    Announcement[]
+
+  @@index([status, startAt])
+  @@index([clubId])
+  @@index([featured])
+}
+
+model EventStaff {
+  id        String    @id @default(cuid())
+  eventId   String
+  userId    String
+  role      StaffRole
+  createdAt DateTime  @default(now())
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}
+
+model EventSection {
+  id        String  @id @default(cuid())
+  eventId   String
+  type      String
+  position  Int
+  content   Json
+  visible   Boolean @default(true)
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, position])
+}
+
+model RegistrationField {
+  id        String         @id @default(cuid())
+  eventId   String
+  label     String
+  key       String
+  type      FieldType
+  required  Boolean        @default(false)
+  options   Json?
+  position  Int
+  appliesTo FieldAppliesTo @default(BOTH)
+  event     Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  responses RegistrationFieldResponse[]
+
+  @@unique([eventId, key])
+}
+
+model Registration {
+  id        String             @id @default(cuid())
+  eventId   String
+  userId    String?
+  teamId    String?            @unique
+  code      String             @unique
+  status    RegistrationStatus @default(CONFIRMED)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  event        Event                        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User?                        @relation("RegistrationOwner", fields: [userId], references: [id])
+  team         Team?                        @relation(fields: [teamId], references: [id])
+  participants RegistrationParticipant[]
+  responses    RegistrationFieldResponse[]
+  attendance   Attendance[]
+
+  @@index([eventId, status])
+  @@index([userId])
+}
+
+model RegistrationParticipant {
+  id             String   @id @default(cuid())
+  registrationId String
+  eventId        String
+  userId         String
+  dedupeKey      String
+  createdAt      DateTime @default(now())
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pass         QrPass?
+
+  @@unique([eventId, dedupeKey])
+  @@index([userId, eventId])
+  @@index([registrationId])
+}
+
+model RegistrationFieldResponse {
+  id             String @id @default(cuid())
+  registrationId String
+  fieldId        String
+  value          String
+
+  registration Registration      @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  field        RegistrationField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([registrationId, fieldId])
+}
+
+model Team {
+  id          String     @id @default(cuid())
+  eventId     String
+  name        String
+  captainId   String
+  status      TeamStatus @default(FORMING)
+  inviteToken String     @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  captain      User             @relation("TeamCaptain", fields: [captainId], references: [id])
+  members      TeamMember[]
+  invitations  TeamInvitation[]
+  registration Registration?
+
+  @@unique([eventId, name])
+  @@index([eventId])
+  @@index([captainId])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model TeamInvitation {
+  id          String           @id @default(cuid())
+  teamId      String
+  email       String
+  invitedById String
+  inviteeId   String?
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+
+  team      Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy User  @relation("Inviter", fields: [invitedById], references: [id])
+  invitee   User? @relation("Invitee", fields: [inviteeId], references: [id])
+
+  @@index([email])
+  @@index([inviteeId, status])
+  @@index([teamId])
+}
+
+model QrPass {
+  id            String   @id @default(cuid())
+  participantId String   @unique
+  token         String   @unique
+  createdAt     DateTime @default(now())
+  participant   RegistrationParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+model Attendance {
+  id             String   @id @default(cuid())
+  eventId        String
+  registrationId String
+  userId         String
+  scannerId      String
+  checkedInAt    DateTime @default(now())
+
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  user         User         @relation("Attendee", fields: [userId], references: [id])
+  scanner      User         @relation("Scanner", fields: [scannerId], references: [id])
+
+  @@unique([eventId, userId])
+  @@index([eventId, checkedInAt])
+}
+
+model CertificateTemplate {
+  id            String          @id @default(cuid())
+  eventId       String
+  type          CertificateType
+  name          String
+  backgroundUrl String?
+  config        Json
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  event         Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  certificates  Certificate[]
+
+  @@index([eventId])
+}
+
+model Certificate {
+  id          String          @id @default(cuid())
+  publicId    String          @unique
+  eventId     String
+  userId      String
+  templateId  String
+  type        CertificateType
+  customLabel String?
+  issuedAt    DateTime        @default(now())
+  revokedAt   DateTime?
+
+  event    Event                 @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template CertificateTemplate   @relation(fields: [templateId], references: [id])
+
+  @@unique([eventId, userId, type])
+  @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model Announcement {
+  id        String               @id @default(cuid())
+  eventId   String
+  authorId  String
+  title     String
+  body      String
+  audience  AnnouncementAudience
+  createdAt DateTime             @default(now())
+  event     Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  author    User                 @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+
+  @@index([eventId, createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
