@@ -23,8 +23,11 @@ const authErrors: Record<string, string> = {
   "provider-taken": "This login is already connected to another NMIET One account.",
   "unverified-email": "An unverified account already uses this email. Sign in with email, or reset the password, then connect the provider from settings.",
   suspended: "This account is suspended.",
-  AccessDenied: "Sign-in was cancelled.",
+  AccessDenied: "Google sign-in was cancelled.",
   Configuration: "That sign-in method is not available right now.",
+  OAuthSignin: "Google sign-in could not be started. Try again.",
+  OAuthCallback: "Google sign-in did not finish. Try again.",
+  Callback: "Sign-in could not be completed. Try again.",
   CredentialsSignin: "Those details don't match an account.",
   expired: "Your session expired. Sign in again.",
 };
@@ -45,6 +48,7 @@ export function LoginForm({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [providerPending, setProviderPending] = useState<"google" | "github" | null>(null);
   const form = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" } });
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
@@ -63,12 +67,24 @@ export function LoginForm({
     router.refresh();
   }
 
+  async function startProvider(provider: "google" | "github") {
+    setProviderPending(provider);
+    setError(null);
+    const result = await signIn(provider, { callbackUrl: safeCallback(callbackUrl, "/dashboard"), redirect: false });
+    if (result?.error || !result?.url) {
+      setProviderPending(null);
+      setError(authErrors[result?.error ?? ""] ?? "Sign-in could not be started. Try again.");
+      return;
+    }
+    window.location.href = result.url;
+  }
+
   return (
     <div className="space-y-6">
       {errorCode && authErrors[errorCode] ? <Alert>{authErrors[errorCode]}</Alert> : null}
       <div className="space-y-2">
-        <Button type="button" variant="outline" className="w-full" disabled={!google} onClick={() => signIn("google", { callbackUrl: safeCallback(callbackUrl, "/home") })}>Continue with Google</Button>
-        <Button type="button" variant="outline" className="w-full" disabled={!github} onClick={() => signIn("github", { callbackUrl: safeCallback(callbackUrl, "/home") })}>Continue with GitHub</Button>
+        <Button type="button" variant="outline" className="w-full" disabled={!google || providerPending !== null} onClick={() => startProvider("google")}>{providerPending === "google" ? "Continuing…" : "Continue with Google"}</Button>
+        <Button type="button" variant="outline" className="w-full" disabled={!github || providerPending !== null} onClick={() => startProvider("github")}>{providerPending === "github" ? "Continuing…" : "Continue with GitHub"}</Button>
         <ButtonLink href={`/login/phone${callbackUrl ? `?callbackUrl=${encodeURIComponent(safeCallback(callbackUrl))}` : ""}`} variant="outline" className="w-full">Continue with phone</ButtonLink>
         {!google || !github ? <p className="text-xs text-muted">A provider button stays unavailable until its keys are configured.</p> : null}
       </div>
