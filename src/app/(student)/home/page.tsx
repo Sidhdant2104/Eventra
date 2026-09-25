@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { EventCard } from "@/components/event-card";
 import { ButtonLink, EmptyState } from "@/components/ui";
 import { EVENT_CATEGORIES } from "@/lib/constants";
@@ -11,6 +12,7 @@ export const metadata = { title: "Home" };
 
 export default async function DashboardPage() {
   const user = await requireUser();
+  if (user.role === "STUDENT" && !isProfileComplete(user)) redirect("/onboarding");
   const [mine, teams, certificates, events] = await Promise.all([
     prisma.registrationParticipant.findMany({
       where: { userId: user.id, registration: { status: { not: "CANCELLED" } } },

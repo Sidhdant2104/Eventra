@@ -39,26 +39,7 @@ export function safeCallback(value: string | undefined | null, fallback = "/home
   return value;
 }
 
-export function isProfileComplete(user: {
-  name: string;
-  profile: {
-    phone: string | null;
-    department: string | null;
-    year: string | null;
-    division: string | null;
-    rollNumber: string | null;
-  } | null;
-}) {
-  const profile = user.profile;
-  return Boolean(
-    user.name.trim() &&
-      profile?.phone &&
-      profile.department &&
-      profile.year &&
-      profile.division &&
-      profile.rollNumber,
-  );
-}
+export { isProfileComplete } from "@/lib/profile-completion";
 
 export function registrationOpen(event: { status: string; registrationDeadline: Date | string }) {
   return event.status === "PUBLISHED" && new Date(event.registrationDeadline).getTime() > Date.now();

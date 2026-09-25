@@ -10,7 +10,7 @@ export function ClubEditor({
   members,
 }: {
   club?: { id: string; name: string; slug: string; description: string | null };
-  members?: { userId: string; role: string; user: { name: string; email: string } }[];
+  members?: { userId: string; role: string; user: { name: string; email: string | null } }[];
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);

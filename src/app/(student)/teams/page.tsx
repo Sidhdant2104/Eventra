@@ -14,7 +14,7 @@ export default async function TeamsPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.teamInvitation.findMany({
-      where: { status: "PENDING", expiresAt: { gt: new Date() }, OR: [{ inviteeId: user.id }, { email: user.email }] },
+      where: { status: "PENDING", expiresAt: { gt: new Date() }, OR: user.email ? [{ inviteeId: user.id }, { email: user.email }] : [{ inviteeId: user.id }] },
       include: { team: { include: { event: true, captain: true } } },
     }),
   ]);

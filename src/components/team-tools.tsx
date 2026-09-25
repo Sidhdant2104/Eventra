@@ -32,7 +32,7 @@ export function TeamTools({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [results, setResults] = useState<{ id: string; name: string; email: string | null }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -56,7 +56,8 @@ export function TeamTools({
             {results.map((person) => (
               <li key={person.id} className="flex items-center justify-between gap-2">
                 <span>{person.name}<span className="block text-muted">{person.email}</span></span>
-                <Button size="sm" type="button" onClick={async () => {
+                <Button size="sm" type="button" disabled={!person.email} onClick={async () => {
+                  if (!person.email) return;
                   const result = await inviteTeammate(teamId, person.email);
                   if (!result.ok) setError(result.error);
                   else router.refresh();

@@ -4,6 +4,10 @@ import type { NextRequest } from "next/server";
 
 const PRIVATE = [
   /^\/home(?:\/|$)/,
+  /^\/dashboard(?:\/|$)/,
+  /^\/onboarding(?:\/|$)/,
+  /^\/settings(?:\/|$)/,
+  /^\/my-events(?:\/|$)/,
   /^\/registrations(?:\/|$)/,
   /^\/teams(?:\/|$)/,
   /^\/certificates(?:\/|$)/,

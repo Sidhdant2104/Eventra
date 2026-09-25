@@ -1,6 +1,6 @@
 import { PlatformRole, Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 const userInclude = { profile: true } satisfies Prisma.UserInclude;
@@ -16,6 +16,7 @@ export async function getCurrentUser() {
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.status === "SUSPENDED") await signOut({ redirectTo: "/login?error=suspended" });
   return user;
 }
 

@@ -14,16 +14,36 @@ export const registerSchema = z.object({
 
 export const profileSchema = z.object({
   name: z.string().trim().min(2, "Enter your full name").max(80),
-  phone: z.string().trim().regex(/^[0-9+\-\s]{10,18}$/, "Enter a valid phone number"),
-  college: z.string().trim().min(2).max(120),
+  preferredName: z.string().trim().max(40),
+  college: z.string().trim().min(2, "Select your college").max(120),
   department: z.string().trim().min(2, "Select your department"),
   year: z.string().trim().min(1, "Select your year"),
   division: z.string().trim().min(1, "Select your division"),
   rollNumber: z.string().trim().min(3, "Enter your roll number").max(32),
+  studentId: z.string().trim().max(32),
   skills: z.string().trim().max(300),
+  interests: z.string().trim().max(300),
   bio: z.string().trim().max(600),
   linkedin: optionalLink,
   github: optionalLink,
+  portfolio: optionalLink,
+});
+
+export const onboardingBasicSchema = z.object({
+  name: z.string().trim().min(2, "Enter your full name").max(80),
+  preferredName: z.string().trim().max(40),
+});
+
+export const onboardingAboutSchema = z.object({
+  skills: z.string().trim().max(300),
+  interests: z.string().trim().max(300),
+  bio: z.string().trim().max(600),
+});
+
+export const onboardingLinksSchema = z.object({
+  linkedin: optionalLink,
+  github: optionalLink,
+  portfolio: optionalLink,
 });
 
 export const eventSettingsSchema = z

@@ -68,7 +68,7 @@ export default async function RegistrationsAdminPage({
               key: `${row.id}-${person.id}`,
               registrationId: row.id,
               name: person.name,
-              email: person.email,
+              email: person.email ?? "—",
               code: row.code,
               department: person.profile?.department ?? "—",
               year: yearLabel(person.profile?.year),

@@ -188,7 +188,7 @@ export async function joinWithLink(inviteToken: string) {
   await prisma.teamInvitation.create({
     data: {
       teamId: team.id,
-      email: user.email,
+      email: user.email ?? "",
       invitedById: team.captainId,
       inviteeId: user.id,
       token,
@@ -294,11 +294,11 @@ export async function registerTeam(teamId: string, responses: Record<string, str
       title: result.status === "WAITLISTED" ? `${team.name} is waitlisted` : `${team.name} is registered`,
       body: `${team.event.name} · ${result.code}`,
       href: "/registrations",
-      email: {
+      ...(member.user.email ? { email: {
         to: member.user.email,
         subject: `${team.name} · ${result.code}`,
         text: `Your team ${team.name} is ${result.status.toLowerCase()} for ${team.event.name}.\nRegistration ID: ${result.code}\n\n${appUrl()}/registrations`,
-      },
+      } } : {}),
     })));
     revalidatePath("/teams");
     revalidatePath("/registrations");

@@ -115,7 +115,7 @@ export function FieldManager({ eventId, fields }: { eventId: string; fields: { i
   );
 }
 
-export function StaffManager({ eventId, staff }: { eventId: string; staff: { userId: string; role: string; user: { name: string; email: string } }[] }) {
+export function StaffManager({ eventId, staff }: { eventId: string; staff: { userId: string; role: string; user: { name: string; email: string | null } }[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   return (

@@ -67,11 +67,11 @@ export async function registerSolo(slug: string, responses: Record<string, strin
         ? `Registration ${result.code} is waitlisted. We'll notify you if a seat opens.`
         : `Registration ${result.code} is confirmed. Your QR pass is ready.`,
       href: `/registrations/${result.participantId}`,
-      email: {
+      ...(user.email ? { email: {
         to: user.email,
         subject: `Registration ${result.code} · ${event.name}`,
         text: `Hi ${user.name},\n\nYour registration for ${event.name} is ${result.status.toLowerCase()}.\nRegistration ID: ${result.code}\n\nOpen your pass: ${appUrl()}/registrations/${result.participantId}`,
-      },
+      } } : {}),
     });
     revalidatePath(`/events/${event.slug}`);
     revalidatePath("/registrations");

@@ -87,11 +87,11 @@ export async function generateCertificates(eventId: string, templateId: string, 
       title: `Certificate ready · ${access.event.name}`,
       body: `${template.name} is available to view and download.`,
       href: `/certificates/${certificate.id}`,
-      email: {
+      ...(participant.user.email ? { email: {
         to: participant.user.email,
         subject: `Your certificate for ${access.event.name}`,
         text: `Your certificate is ready.\n\nView: ${appUrl()}/certificates/${certificate.id}\nVerify: ${appUrl()}/verify/${certificate.publicId}`,
-      },
+      } } : {}),
     });
   }
   revalidatePath(`/admin/events/${eventId}/certificates`);

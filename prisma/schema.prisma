@@ -15,6 +15,11 @@ enum PlatformRole {
   STUDENT
 }
 
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum ClubRole {
   CLUB_ADMIN
   MEMBER
@@ -108,17 +113,21 @@ enum FieldAppliesTo {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  email         String       @unique
+  id            String        @id @default(cuid())
+  email         String?       @unique
   emailVerified DateTime?
   passwordHash  String?
   name          String
   image         String?
-  role          PlatformRole @default(STUDENT)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  role          PlatformRole  @default(STUDENT)
+  status        AccountStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   accounts            Account[]
+  identities          AuthIdentity[]
+  loginGrants         LoginGrant[]
+  emailVerifications  EmailVerificationToken[]
   sessions            Session[]
   profile             StudentProfile?
   clubMembers         ClubMember[]
@@ -139,22 +148,126 @@ model User {
 }
 
 model StudentProfile {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phone      String?
-  college    String   @default("NMIET")
-  department String?
-  year       String?
-  division   String?
-  rollNumber String?  @unique
-  skills     String?
-  bio        String?
-  linkedin   String?
-  github     String?
-  resumeUrl  String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone            String?
+  preferredName    String?
+  college          String   @default("NMIET")
+  department       String?
+  year             String?
+  division         String?
+  rollNumber       String?  @unique
+  studentId        String?  @unique
+  skills           String?
+  interests        String?
+  bio              String?
+  linkedin         String?
+  github           String?
+  portfolioUrl     String?
+  resumeUrl        String?
+  profileCompleted Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model College {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  slug        String       @unique
+  active      Boolean      @default(true)
+  departments Department[]
+  createdAt   DateTime     @default(now())
+}
+
+model Department {
+  id        String  @id @default(cuid())
+  collegeId String
+  name      String
+  active    Boolean @default(true)
+  college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@unique([collegeId, name])
+}
+
+model AcademicYear {
+  id       String  @id @default(cuid())
+  code     String  @unique
+  label    String
+  position Int
+  active   Boolean @default(true)
+}
+
+model DivisionOption {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  position Int
+  active   Boolean @default(true)
+}
+
+model AuthIdentity {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  providerEmail     String?
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@index([providerEmail])
+}
+
+model OtpChallenge {
+  id          String    @id @default(cuid())
+  phoneE164   String
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  consumedAt  DateTime?
+  ipHash      String?
+  createdAt   DateTime  @default(now())
+
+  @@index([phoneE164, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+model PendingAuthLink {
+  id                String    @id @default(cuid())
+  tokenHash         String    @unique
+  provider          String
+  providerAccountId String
+  providerEmail     String
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  createdAt         DateTime  @default(now())
+}
+
+model LoginGrant {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Club {

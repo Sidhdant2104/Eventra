@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, Input, Label } from "@/components/ui";
+import { Alert, Button, ButtonLink, Input, Label } from "@/components/ui";
 import { registerAccount, requestPasswordReset, resetPassword } from "@/lib/actions/auth";
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/lib/constants";
 import { safeCallback } from "@/lib/utils";
@@ -18,7 +18,30 @@ const loginSchema = z.object({
   password: z.string().min(1, "Enter your password"),
 });
 
-export function LoginForm({ callbackUrl, google, showDemo }: { callbackUrl?: string; google: boolean; showDemo: boolean }) {
+const authErrors: Record<string, string> = {
+  OAuthAccountNotLinked: "This login is already connected to another NMIET One account.",
+  "provider-taken": "This login is already connected to another NMIET One account.",
+  "unverified-email": "An unverified account already uses this email. Sign in with email, or reset the password, then connect the provider from settings.",
+  suspended: "This account is suspended.",
+  AccessDenied: "Sign-in was cancelled.",
+  Configuration: "That sign-in method is not available right now.",
+  CredentialsSignin: "Those details don't match an account.",
+  expired: "Your session expired. Sign in again.",
+};
+
+export function LoginForm({
+  callbackUrl,
+  google,
+  github,
+  showDemo,
+  errorCode,
+}: {
+  callbackUrl?: string;
+  google: boolean;
+  github: boolean;
+  showDemo: boolean;
+  errorCode?: string;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -42,6 +65,14 @@ export function LoginForm({ callbackUrl, google, showDemo }: { callbackUrl?: str
 
   return (
     <div className="space-y-6">
+      {errorCode && authErrors[errorCode] ? <Alert>{authErrors[errorCode]}</Alert> : null}
+      <div className="space-y-2">
+        <Button type="button" variant="outline" className="w-full" disabled={!google} onClick={() => signIn("google", { callbackUrl: safeCallback(callbackUrl, "/home") })}>Continue with Google</Button>
+        <Button type="button" variant="outline" className="w-full" disabled={!github} onClick={() => signIn("github", { callbackUrl: safeCallback(callbackUrl, "/home") })}>Continue with GitHub</Button>
+        <ButtonLink href={`/login/phone${callbackUrl ? `?callbackUrl=${encodeURIComponent(safeCallback(callbackUrl))}` : ""}`} variant="outline" className="w-full">Continue with phone</ButtonLink>
+        {!google || !github ? <p className="text-xs text-muted">A provider button stays unavailable until its keys are configured.</p> : null}
+      </div>
+      <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Or use email</p>
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         {error ? <Alert>{error}</Alert> : null}
         <div>
@@ -54,7 +85,6 @@ export function LoginForm({ callbackUrl, google, showDemo }: { callbackUrl?: str
         </div>
         <Button className="w-full" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</Button>
       </form>
-      {google ? <Button type="button" variant="outline" className="w-full" onClick={() => signIn("google", { callbackUrl: safeCallback(callbackUrl, "/home") })}>Continue with Google</Button> : null}
       <p className="text-sm text-muted">New here? <Link className="font-semibold text-ink" href="/register">Create a student account</Link></p>
       <p className="text-sm"><Link className="font-medium" href="/forgot-password">Forgot password</Link></p>
       {showDemo ? (
@@ -98,7 +128,7 @@ export function RegisterForm() {
         router.push("/login");
         return;
       }
-      router.push("/profile?complete=1");
+      router.push("/onboarding");
       router.refresh();
     })}>
       {error ? <Alert>{error}</Alert> : null}

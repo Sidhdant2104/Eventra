@@ -40,11 +40,11 @@ export async function sendAnnouncement(eventId: string, input: {
   const type = input.kind as NotificationType;
   await notifyMany(userIds, { type, title, body, href: `/events/${access.event.slug}` });
   const recipients = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { email: true } });
-  await emailUsers(recipients.map((recipient) => ({
+  await emailUsers(recipients.flatMap((recipient) => recipient.email ? [{
     to: recipient.email,
     subject: `${title} · ${access.event.name}`,
     text: `${body}\n\n${access.event.name}`,
-  })));
+  }] : []));
   revalidatePath(`/admin/events/${eventId}/announcements`);
   return { ok: true as const, sent: userIds.length };
 }

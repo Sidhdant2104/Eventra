@@ -1,5 +1,6 @@
 import { hash } from "bcryptjs";
 import { PrismaClient, type Prisma } from "@prisma/client";
+import { DEPARTMENTS, DIVISIONS, YEARS } from "../src/lib/constants";
 import { DEMO_PASSWORD } from "../src/lib/demo-password";
 import { randomToken } from "../src/lib/crypto";
 
@@ -31,23 +32,44 @@ async function main() {
       "ClubMember",
       "Club",
       "PasswordResetToken",
+      "EmailVerificationToken",
+      "LoginGrant",
+      "PendingAuthLink",
+      "OtpChallenge",
+      "AuthIdentity",
       "Session",
       "Account",
       "VerificationToken",
       "StudentProfile",
+      "Department",
+      "College",
+      "AcademicYear",
+      "DivisionOption",
       "User"
     RESTART IDENTITY CASCADE
   `);
+
+  await prisma.college.create({
+    data: { name: "NMIET", slug: "nmiet", departments: { create: DEPARTMENTS.map((name) => ({ name })) } },
+  });
+  await prisma.academicYear.createMany({ data: YEARS.map((year, position) => ({ code: year.value, label: year.label, position })) });
+  await prisma.divisionOption.createMany({ data: DIVISIONS.map((name, position) => ({ name, position })) });
 
   const passwordHash = await hash(DEMO_PASSWORD, 12);
   const account = (email: string, name: string, role: "SUPER_ADMIN" | "CLUB_ADMIN" | "EVENT_MANAGER" | "VOLUNTEER" | "STUDENT", profile?: Prisma.StudentProfileCreateWithoutUserInput) =>
     prisma.user.create({
       data: {
         email,
+        emailVerified: new Date(),
         name,
         role,
         passwordHash,
-        profile: profile ? { create: { college: "NMIET", ...profile } } : role === "STUDENT" ? { create: { college: "NMIET" } } : undefined,
+        profile: profile
+          ? { create: { college: "NMIET", profileCompleted: Boolean(profile.department && profile.year && profile.division && profile.rollNumber), ...profile } }
+          : role === "STUDENT"
+            ? { create: { college: "NMIET" } }
+            : undefined,
+        identities: { create: { provider: "email", providerAccountId: email, providerEmail: email } },
       },
     });
 
@@ -57,7 +79,8 @@ async function main() {
   const ecellAdmin = await account("ecell.admin@nmiet.edu.in", "Vikram Joshi", "CLUB_ADMIN");
   const manager = await account("manager@nmiet.edu.in", "Neha Shah", "EVENT_MANAGER");
   const volunteer = await account("volunteer@nmiet.edu.in", "Arjun More", "VOLUNTEER");
-  const aarav = await account("aarav@nmiet.edu.in", "Aarav Mehta", "STUDENT", { phone: "9876543210", department: "Computer Engineering", year: "TE", division: "A", rollNumber: "TECOA041", skills: "TypeScript, product design", bio: "Building campus tools and hackathon prototypes.", github: "https://github.com/aarav-mehta", linkedin: "https://www.linkedin.com/in/aarav-mehta" });
+  const aarav = await account("aarav@nmiet.edu.in", "Aarav Mehta", "STUDENT", { phone: "+919876543210", department: "Computer Engineering", year: "TE", division: "A", rollNumber: "TECOA041", skills: "TypeScript, product design", bio: "Building campus tools and hackathon prototypes.", github: "https://github.com/aarav-mehta", linkedin: "https://www.linkedin.com/in/aarav-mehta" });
+  await prisma.authIdentity.create({ data: { userId: aarav.id, provider: "phone", providerAccountId: "+919876543210" } });
   const diya = await account("diya@nmiet.edu.in", "Diya Kulkarni", "STUDENT", { phone: "9876500011", department: "Information Technology", year: "TE", division: "B", rollNumber: "TEITB018", skills: "Python, ML", github: "https://github.com/diya-kulkarni" });
   const kabir = await account("kabir@nmiet.edu.in", "Kabir Shah", "STUDENT", { phone: "9876500022", department: "Artificial Intelligence & Data Science", year: "SE", division: "A", rollNumber: "SEAIA012", skills: "Computer vision" });
   const meera = await account("meera@nmiet.edu.in", "Meera Iyer", "STUDENT", { phone: "9876500033", department: "Computer Engineering", year: "SE", division: "C", rollNumber: "SECOC027", skills: "UI, Figma" });
@@ -223,7 +246,7 @@ async function main() {
   await prisma.teamInvitation.create({
     data: {
       teamId: team.id,
-      email: meera.email,
+      email: meera.email ?? "meera@nmiet.edu.in",
       invitedById: aarav.id,
       inviteeId: meera.id,
       token: randomToken(18),

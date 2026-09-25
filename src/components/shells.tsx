@@ -98,7 +98,10 @@ const adminGroups = [
   },
   {
     label: "System",
-    links: [{ href: "/admin/clubs", label: "Clubs", icon: Building2, exact: false }],
+    links: [
+      { href: "/admin/clubs", label: "Clubs", icon: Building2, exact: false },
+      { href: "/admin/academics", label: "Academics", icon: Building2, exact: false, super: true },
+    ],
   },
 ];
 
