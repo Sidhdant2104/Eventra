@@ -13,7 +13,7 @@ export async function consumePendingLink(token: string) {
     return { ok: false as const, error: "This connection request has expired. Start the provider sign-in again." };
   }
   if (!user.email || !user.emailVerified || user.email.toLowerCase() !== row.providerEmail) {
-    return { ok: false as const, error: "Sign in to the NMIET One account for this email before connecting the provider." };
+    return { ok: false as const, error: "Sign in to the Eventra account for this email before connecting the provider." };
   }
   const taken = await prisma.account.findUnique({
     where: { provider_providerAccountId: { provider: row.provider, providerAccountId: row.providerAccountId } },

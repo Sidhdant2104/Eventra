@@ -38,7 +38,7 @@ export async function PassCard({
       <div className="h-1.5" style={{ background: theme.accent }} />
       <div className="px-6 pb-2 pt-6">
         <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.2em] text-white/45">
-          <span>NMIET One</span>
+          <span>Eventra</span>
           <span>{clubName || "Campus"}</span>
         </div>
         <h1 className="mt-8 font-display text-5xl text-white">{eventName}</h1>

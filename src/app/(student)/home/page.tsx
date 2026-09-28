@@ -13,7 +13,7 @@ export const metadata = { title: "Home" };
 export default async function DashboardPage() {
   const user = await requireUser();
   if (user.role === "STUDENT" && !isProfileComplete(user)) redirect("/onboarding");
-  const [mine, teams, certificates, events] = await Promise.all([
+  const [mine, teams, certificates, events, notifications] = await Promise.all([
     prisma.registrationParticipant.findMany({
       where: { userId: user.id, registration: { status: { not: "CANCELLED" } } },
       include: { registration: { include: { event: { include: { club: true } }, team: true } }, pass: true },
@@ -38,6 +38,7 @@ export default async function DashboardPage() {
       orderBy: [{ featured: "desc" }, { startAt: "asc" }],
       take: 6,
     }),
+    prisma.notification.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 3 }),
   ]);
   const registeredIds = new Set(mine.map((row) => row.registration.eventId));
   const nextMine = mine.find((row) => row.registration.event.endAt >= new Date());
@@ -115,6 +116,19 @@ export default async function DashboardPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-end justify-between">
+          <h2 className="font-display text-4xl">Notifications</h2>
+          <Link href="/notifications" className="text-sm font-medium">Inbox</Link>
+        </div>
+        {notifications.length === 0 ? <p className="text-sm text-muted">Nothing new.</p> : notifications.map((note) => (
+          <Link key={note.id} href={note.href || "/notifications"} className="block border-t border-line py-4">
+            <p className="text-sm font-medium">{note.title}</p>
+            <p className="mt-1 text-sm text-secondary">{note.body}</p>
+          </Link>
+        ))}
       </section>
 
       {discover.length > 0 ? (

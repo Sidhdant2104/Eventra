@@ -7,7 +7,7 @@ export function AuthFrame({ title, subtitle, children }: { title: string; subtit
         <Logo light href="/" />
         <div>
           <div className="mb-6 h-1 w-12 bg-accent" />
-          <p className="text-[11px] uppercase tracking-[0.22em] text-white/50">NMIET One</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-white/50">Eventra</p>
           <h2 className="mt-4 max-w-md font-display text-6xl text-white">One profile. Every event. One campus.</h2>
           <ul className="mt-8 space-y-2 text-sm text-white/65">
             <li>One profile for every club</li>

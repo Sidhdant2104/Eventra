@@ -35,8 +35,8 @@ async function sendVerification(userId: string, email: string) {
   const link = `${appUrl()}/verify-email?token=${token}`;
   await sendEmail({
     to: email,
-    subject: "Verify your NMIET One email",
-    text: `Confirm this email for your NMIET One account:\n${link}\n\nThe link expires in one hour.`,
+    subject: "Verify your Eventra email",
+    text: `Confirm this email for your Eventra account:\n${link}\n\nThe link expires in one hour.`,
   });
   return process.env.NODE_ENV !== "production" && (process.env.EMAIL_PROVIDER ?? "console") === "console" ? link : null;
 }
@@ -94,7 +94,7 @@ export async function requestPasswordReset(emailInput: string) {
   const link = `${appUrl()}/reset-password?token=${token}`;
   await sendEmail({
     to: email,
-    subject: "Reset your NMIET One password",
+    subject: "Reset your Eventra password",
     text: `Reset your password within the next hour:\n${link}\n\nIf you did not ask for this, you can ignore the email.`,
   });
   const devLink = process.env.NODE_ENV !== "production" && (process.env.EMAIL_PROVIDER ?? "console") === "console" ? link : null;

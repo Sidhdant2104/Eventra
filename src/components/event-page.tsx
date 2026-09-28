@@ -102,7 +102,7 @@ export function EventPageView({
         <>
           <footer className="border-t border-line px-4 py-12 text-sm text-muted">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-              <p>{event.club.name} · NMIET One</p>
+              <p>{event.club.name} · Eventra</p>
               <Link href="/explore" className="font-medium text-ink">More events</Link>
             </div>
           </footer>

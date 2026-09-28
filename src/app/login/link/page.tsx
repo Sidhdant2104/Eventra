@@ -20,7 +20,7 @@ export default async function LinkAccountPage({ searchParams }: { searchParams: 
   }
   const callbackUrl = `/login/link?token=${encodeURIComponent(token)}`;
   return (
-    <AuthFrame title="Connect this login." subtitle="An NMIET One account already exists with this email. Sign in to that account to connect the provider. We will not create a second account.">
+    <AuthFrame title="Connect this login." subtitle="An Eventra account already exists with this email. Sign in to that account to connect the provider. We will not create a second account.">
       {error ? <Alert>{error}</Alert> : null}
       {user ? <p className="mb-4 text-sm text-secondary">You are signed in as {user.email ?? "a phone account"}. Sign out and use the account that owns this email.</p> : null}
       <LoginForm callbackUrl={callbackUrl} google={googleAuthEnabled} github={githubAuthEnabled} showDemo={process.env.NODE_ENV === "development" && process.env.DEMO_MODE !== "false"} />

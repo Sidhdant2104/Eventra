@@ -32,7 +32,7 @@ export function CertificateArt({
       <div className="absolute inset-3 rounded-[1.2rem] border border-ink/15" />
       <div className="absolute inset-5 rounded-[1rem] border" style={{ borderColor: accent }} />
       <div className="relative flex h-full flex-col items-center px-8 text-center">
-        <p className="mt-[10%] text-xs font-semibold uppercase tracking-[0.28em]" style={{ color: accent }}>NMIET One</p>
+        <p className="mt-[10%] text-xs font-semibold uppercase tracking-[0.28em]" style={{ color: accent }}>Eventra</p>
         <h1 className="mt-3 font-display text-4xl sm:text-6xl">{typeLabel}</h1>
         <p className="mt-4 text-sm text-muted">This certificate is presented to</p>
         <p className="absolute left-0 right-0 font-display text-4xl sm:text-6xl" style={{ top: `${nameY}%` }}>{recipient}</p>

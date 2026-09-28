@@ -3,7 +3,15 @@ import { notFound } from "next/navigation";
 import { EventAdminNav } from "@/components/event-admin-nav";
 import { prisma } from "@/lib/db";
 import { formatDay } from "@/lib/format";
-import { requireUser, getEventAccess } from "@/lib/permissions";
+import { getCurrentUser, requireUser, getEventAccess } from "@/lib/permissions";
+
+export async function generateMetadata({ params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  const user = await getCurrentUser();
+  if (!user) return { title: "Event" };
+  const access = await getEventAccess(user, eventId);
+  return { title: access?.event.name ?? "Event" };
+}
 
 export default async function EventAdminLayout({ children, params }: { children: React.ReactNode; params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
@@ -21,7 +29,7 @@ export default async function EventAdminLayout({ children, params }: { children:
         <div>
           <h1 className="font-display text-4xl sm:text-5xl">{access.event.name}</h1>
           <p className="mt-3 text-sm text-secondary">{formatDay(access.event.startAt)}</p>
-          {access.permissions.includes("ANALYTICS_VIEW") || access.permissions.includes("REGISTRATIONS_VIEW") ? (
+          {access.permissions.includes("ANALYTICS_VIEW") || access.permissions.includes("REGISTRATIONS_VIEW") || access.permissions.includes("ATTENDANCE_VIEW") ? (
             <p className="mt-1 text-sm"><span className="font-medium">{registered}</span> registrations · <span className="font-medium">{checked}</span> checked in</p>
           ) : null}
         </div>

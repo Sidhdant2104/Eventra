@@ -2,28 +2,24 @@ import Link from "next/link";
 import { ButtonLink, StatusBadge } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { formatDay } from "@/lib/format";
-import { requireAdmin } from "@/lib/permissions";
+import { canCreateEvent, requireAdmin, scopedEvents } from "@/lib/permissions";
 
 export const metadata = { title: "Events" };
 
 export default async function AdminEventsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await requireAdmin();
   const query = (await searchParams).q?.trim() ?? "";
+  const scope = await scopedEvents(user);
+  const registrationIds = new Set(scope.registrationIds);
   const events = await prisma.event.findMany({
     where: {
+      id: { in: scope.viewIds },
       ...(query ? { name: { contains: query, mode: "insensitive" } } : {}),
-      ...(user.role === "SUPER_ADMIN" ? {} : {
-        OR: [
-          { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" } } } },
-          { staff: { some: { userId: user.id } } },
-          { units: { some: { members: { some: { userId: user.id, removedAt: null } }, archivedAt: null } } },
-        ],
-      }),
     },
     include: { club: true, _count: { select: { participants: true } } },
     orderBy: { startAt: "desc" },
   });
-  const canCreate = user.role === "SUPER_ADMIN" || user.role === "CLUB_ADMIN";
+  const canCreate = await canCreateEvent(user);
   return (
     <div>
       <div className="flex items-end justify-between gap-3">
@@ -39,7 +35,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                 <td className="py-3 font-medium"><Link href={`/admin/events/${event.id}`}>{event.name}</Link></td>
                 <td>{event.club.name}</td>
                 <td>{formatDay(event.startAt)}</td>
-                <td>{event._count.participants}</td>
+                <td>{registrationIds.has(event.id) ? event._count.participants : "—"}</td>
                 <td><StatusBadge status={event.status} /></td>
               </tr>
             ))}

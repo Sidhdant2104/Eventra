@@ -39,7 +39,7 @@ export async function requestPhoneOtp(phoneInput: string) {
     },
   });
   try {
-    await sendSms({ to: phone, body: `Your NMIET One code is ${code}. It expires in 5 minutes.` });
+    await sendSms({ to: phone, body: `Your Eventra code is ${code}. It expires in 5 minutes.` });
   } catch (error) {
     return { ok: false as const, error: error instanceof Error ? error.message : "Phone sign-in is not available right now." };
   }

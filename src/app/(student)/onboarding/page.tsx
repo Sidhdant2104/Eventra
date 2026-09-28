@@ -17,7 +17,7 @@ export default async function OnboardingPage() {
   return (
     <div className="mx-auto max-w-xl">
       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Your campus profile</p>
-      <h1 className="mt-2 font-display text-5xl">Set up NMIET One.</h1>
+      <h1 className="mt-2 font-display text-5xl">Set up Eventra.</h1>
       <p className="mt-3 text-sm leading-6 text-secondary">This is the same account no matter how you sign in. You can skip the optional steps and finish them later.</p>
       <div className="mt-8">
         <OnboardingWizard

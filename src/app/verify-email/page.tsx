@@ -9,7 +9,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
   return (
     <main id="content" className="mx-auto max-w-lg px-4 py-16">
       <h1 className="font-display text-5xl">{result.ok ? "Email verified." : "Could not verify."}</h1>
-      <p className="mt-3 text-sm text-secondary">{result.ok ? "This address is now confirmed on your NMIET One account." : result.error}</p>
+      <p className="mt-3 text-sm text-secondary">{result.ok ? "This address is now confirmed on your Eventra account." : result.error}</p>
       <Link href="/settings" className="mt-6 inline-block text-sm font-medium">Back to settings</Link>
     </main>
   );

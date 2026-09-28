@@ -2,44 +2,29 @@ import Link from "next/link";
 import { AdminChart } from "@/components/admin-chart";
 import { prisma } from "@/lib/db";
 import { formatWhen, greeting } from "@/lib/format";
-import { requireAdmin } from "@/lib/permissions";
+import { requireAdmin, scopedEvents } from "@/lib/permissions";
 
-export const metadata = { title: "Overview" };
+export const metadata = { title: { absolute: "Overview · Eventra Admin" } };
 
 export default async function AdminHome() {
   const user = await requireAdmin();
-  const visible = user.role === "SUPER_ADMIN" ? {} : {
-    OR: [
-      { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" as const } } } },
-      { staff: { some: { userId: user.id } } },
-      { units: { some: { archivedAt: null, members: { some: { userId: user.id, removedAt: null } } } } },
-    ],
-  };
-  const registrationVisible = user.role === "SUPER_ADMIN" ? {} : {
-    event: {
-      OR: [
-        { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" as const } } } },
-        { staff: { some: { userId: user.id, role: "EVENT_MANAGER" as const } } },
-        { units: { some: { archivedAt: null, permissions: { has: "REGISTRATIONS_VIEW" }, members: { some: { userId: user.id, removedAt: null } } } } },
-      ],
-    },
-  };
-  const [events, upcomingEvents, registrations, attendance, certificates, recent, grouped, announcements] = await Promise.all([
-    prisma.event.count({ where: visible }),
-    prisma.event.findMany({ where: { ...visible, status: "PUBLISHED", startAt: { gte: new Date() } }, include: { club: true }, orderBy: { startAt: "asc" }, take: 4 }),
-    prisma.registration.count({ where: { status: { not: "CANCELLED" }, ...registrationVisible } }),
-    prisma.attendance.count({ where: { event: visible } }),
-    prisma.certificate.count({ where: { revokedAt: null, event: visible } }),
-    prisma.registration.findMany({ where: registrationVisible, include: { event: true, user: true, team: true }, orderBy: { createdAt: "desc" }, take: 6 }),
-    prisma.event.findMany({ where: visible, include: { _count: { select: { participants: true } } }, orderBy: { startAt: "asc" } }),
-    prisma.announcement.findMany({ where: { event: visible }, include: { event: true }, orderBy: { createdAt: "desc" }, take: 4 }),
+  const scope = await scopedEvents(user);
+  const [upcomingEvents, registrations, attendance, certificates, recent, grouped, announcements] = await Promise.all([
+    prisma.event.findMany({ where: { id: { in: scope.viewIds }, status: "PUBLISHED", startAt: { gte: new Date() } }, include: { club: true }, orderBy: { startAt: "asc" }, take: 4 }),
+    prisma.registration.count({ where: { status: { not: "CANCELLED" }, eventId: { in: scope.registrationIds } } }),
+    prisma.attendance.count({ where: { eventId: { in: scope.attendanceIds } } }),
+    prisma.certificate.count({ where: { revokedAt: null, eventId: { in: scope.certificateIds } } }),
+    prisma.registration.findMany({ where: { eventId: { in: scope.registrationIds } }, include: { event: true, user: true, team: true }, orderBy: { createdAt: "desc" }, take: 6 }),
+    prisma.event.findMany({ where: { id: { in: scope.registrationIds } }, include: { _count: { select: { participants: true } } }, orderBy: { startAt: "asc" } }),
+    prisma.announcement.findMany({ where: { eventId: { in: scope.announcementIds } }, include: { event: true }, orderBy: { createdAt: "desc" }, take: 4 }),
   ]);
-  const metrics = [
-    ["Events", events, "/admin/events"],
-    ["Registrations", registrations, "/admin/events"],
-    ["Attendance", attendance, "/admin/events"],
-    ["Certificates", certificates, "/admin/events"],
-  ] as const;
+  const events = scope.viewIds.length;
+  const metrics: { label: string; value: number; href: string }[] = [
+    { label: "Events", value: events, href: "/admin/events" },
+  ];
+  if (scope.registrationIds.length) metrics.push({ label: "Registrations", value: registrations, href: "/admin/events" });
+  if (scope.attendanceIds.length) metrics.push({ label: "Attendance", value: attendance, href: "/admin/events" });
+  if (scope.certificateIds.length) metrics.push({ label: "Certificates", value: certificates, href: "/admin/events" });
   return (
     <div className="space-y-8">
       <div>
@@ -48,20 +33,22 @@ export default async function AdminHome() {
         <p className="mt-2 max-w-lg text-[15px] text-secondary">Platform overview across the clubs you can manage. Open an event for registrations, attendance, and certificates.</p>
       </div>
       <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(([label, value, href]) => (
-          <Link key={label} href={href} className="bg-[#f6f6f4] px-5 py-5 hover:bg-white">
-            <p className="text-[12px] uppercase tracking-[0.14em] text-muted">{label}</p>
-            <p className="mt-3 font-display text-5xl">{value}</p>
+        {metrics.map((metric) => (
+          <Link key={metric.label} href={metric.href} className="bg-[#f6f6f4] px-5 py-5 hover:bg-white">
+            <p className="text-[12px] uppercase tracking-[0.14em] text-muted">{metric.label}</p>
+            <p className="mt-3 font-display text-5xl">{metric.value}</p>
           </Link>
         ))}
       </div>
       <div className="grid gap-10 xl:grid-cols-[1.1fr_0.9fr]">
-        <section>
-          <h2 className="text-sm font-medium">Registrations by event</h2>
-          <div className="mt-4">
-            <AdminChart data={grouped.map((event) => ({ name: event.name.split(" ")[0] ?? event.name, registrations: event._count.participants }))} />
-          </div>
-        </section>
+        {scope.registrationIds.length ? (
+          <section>
+            <h2 className="text-sm font-medium">Registrations by event</h2>
+            <div className="mt-4">
+              <AdminChart data={grouped.map((event) => ({ name: event.name.split(" ")[0] ?? event.name, registrations: event._count.participants }))} />
+            </div>
+          </section>
+        ) : null}
         <section>
           <h2 className="text-sm font-medium">Upcoming events</h2>
           <ul className="mt-3">
@@ -76,7 +63,7 @@ export default async function AdminHome() {
         </section>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
-        <section>
+        {scope.registrationIds.length ? <section>
           <h2 className="text-sm font-medium">Recent registrations</h2>
           <ul className="mt-3 text-sm">
             {recent.map((row) => (
@@ -86,8 +73,8 @@ export default async function AdminHome() {
               </li>
             ))}
           </ul>
-        </section>
-        <section>
+        </section> : null}
+        {scope.announcementIds.length ? <section>
           <h2 className="text-sm font-medium">Recent activity</h2>
           <ul className="mt-3 text-sm">
             {announcements.map((item) => (
@@ -98,7 +85,7 @@ export default async function AdminHome() {
             ))}
             {announcements.length === 0 ? <li className="pt-3 text-muted">Announcements from events will show up here.</li> : null}
           </ul>
-        </section>
+        </section> : null}
       </div>
     </div>
   );

@@ -120,7 +120,7 @@ export async function inviteTeammate(teamId: string, emailInput: string) {
     await sendEmail({
       to: email,
       subject: `Team invite · ${team.name}`,
-      text: `${user.name} invited you to ${team.name} for ${team.event.name} on NMIET One.\n\nCreate an account with this email, then open:\n${link}`,
+      text: `${user.name} invited you to ${team.name} for ${team.event.name} on Eventra.\n\nCreate an account with this email, then open:\n${link}`,
     });
   }
   revalidatePath(`/teams/${teamId}`);

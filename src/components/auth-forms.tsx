@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { getSession, signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -19,8 +19,8 @@ const loginSchema = z.object({
 });
 
 const authErrors: Record<string, string> = {
-  OAuthAccountNotLinked: "This login is already connected to another NMIET One account.",
-  "provider-taken": "This login is already connected to another NMIET One account.",
+  OAuthAccountNotLinked: "This login is already connected to another Eventra account.",
+  "provider-taken": "This login is already connected to another Eventra account.",
   "unverified-email": "An unverified account already uses this email. Sign in with email, or reset the password, then connect the provider from settings.",
   suspended: "This account is suspended.",
   AccessDenied: "Google sign-in was cancelled.",
@@ -60,9 +60,7 @@ export function LoginForm({
       setError("Those details don't match an account.");
       return;
     }
-    const session = await getSession();
-    const role = session?.user?.role;
-    const destination = safeCallback(callbackUrl, role && role !== "STUDENT" ? "/admin" : "/home");
+    const destination = safeCallback(callbackUrl, "/home");
     router.push(destination);
     router.refresh();
   }

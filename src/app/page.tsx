@@ -25,7 +25,7 @@ export default async function HomePage() {
       <main id="content">
         <section className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-8 pt-6 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:pt-10">
           <div className="rise">
-            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted">NMIET One</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted">Eventra</p>
             <h1 className="mt-4 font-display text-[2.7rem] leading-[0.92] text-ink sm:text-6xl lg:text-7xl">
               One profile.<br />Every event.<br />One campus.
             </h1>

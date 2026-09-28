@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { heldGrants } from "@/lib/authorize";
 import { getCurrentUser } from "@/lib/permissions";
 import { saveUpload } from "@/lib/storage";
 
@@ -13,9 +14,14 @@ export async function POST(request: Request) {
   if (!folders.includes(folder as (typeof folders)[number]) || !(file instanceof File)) {
     return NextResponse.json({ error: "Choose a valid file." }, { status: 400 });
   }
-  const staff = user.role !== "STUDENT";
-  if (!staff && folder !== "avatars" && folder !== "resumes") {
-    return NextResponse.json({ error: "You cannot upload that file." }, { status: 403 });
+  if (folder !== "avatars" && folder !== "resumes") {
+    const grants = await heldGrants(user);
+    const allowed = folder === "events"
+      ? grants.some((grant) => grant.permission === "EVENT_PAGE_EDIT")
+      : folder === "clubs"
+        ? grants.some((grant) => grant.permission === "CLUB_EDIT")
+        : grants.some((grant) => grant.permission === "CERTIFICATE_ISSUE");
+    if (!allowed) return NextResponse.json({ error: "You cannot upload that file." }, { status: 403 });
   }
   try {
     const url = await saveUpload(file, folder as (typeof folders)[number]);

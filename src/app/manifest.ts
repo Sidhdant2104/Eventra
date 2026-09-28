@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "NMIET One",
-    short_name: "NMIET One",
+    name: "Eventra",
+    short_name: "Eventra",
     description: "One profile. Every event. One campus.",
     start_url: "/home",
     scope: "/",

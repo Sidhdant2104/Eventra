@@ -12,7 +12,7 @@ export async function lookupPass(eventId: string, raw: string) {
   const access = await getEventAccess(user, eventId);
   if (!access?.permissions.includes("ATTENDANCE_SCAN") && !access?.permissions.includes("ATTENDANCE_VIEW")) return { ok: false as const, error: "You cannot scan for this event." };
   const token = parsePassToken(raw);
-  if (!token) return { ok: true as const, state: "invalid" as const, message: "This QR code is not an NMIET One pass." };
+  if (!token) return { ok: true as const, state: "invalid" as const, message: "This QR code is not an Eventra pass." };
   const pass = await prisma.qrPass.findUnique({
     where: { token },
     include: {
