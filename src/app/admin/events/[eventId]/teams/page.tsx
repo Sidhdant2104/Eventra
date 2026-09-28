@@ -1,10 +1,10 @@
 import { Card, StatusBadge } from "@/components/ui";
 import { prisma } from "@/lib/db";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 export default async function TeamsAdminPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  await requireEventAccess(eventId, ["full", "manage"]);
+  await requireEventPermission(eventId, "TEAM_VIEW");
   const teams = await prisma.team.findMany({
     where: { eventId },
     include: { captain: true, members: { include: { user: true } }, registration: true, invitations: { where: { status: "PENDING" } } },

@@ -9,7 +9,7 @@ import { registerTeam } from "@/lib/actions/teams";
 type Field = {
   key: string;
   label: string;
-  type: "TEXT" | "TEXTAREA" | "SELECT" | "URL" | "NUMBER";
+  type: "TEXT" | "TEXTAREA" | "SELECT" | "URL" | "NUMBER" | "EMAIL" | "PHONE" | "MULTISELECT" | "RADIO" | "CHECKBOX" | "FILE" | "DATE";
   required: boolean;
   options: unknown;
   appliesTo: "SOLO" | "TEAM" | "BOTH";
@@ -58,14 +58,15 @@ export function RegisterForm({
           <div key={field.key}>
             <Label htmlFor={field.key}>{field.label}{field.required ? " *" : ""}</Label>
             {field.type === "TEXTAREA" ? <Textarea id={field.key} name={field.key} required={field.required} /> : null}
-            {field.type === "SELECT" ? (
+            {field.type === "SELECT" || field.type === "RADIO" ? (
               <Select id={field.key} name={field.key} required={field.required} defaultValue="">
                 <option value="" disabled>Select</option>
                 {options.map((option) => <option key={option}>{option}</option>)}
               </Select>
             ) : null}
-            {field.type !== "TEXTAREA" && field.type !== "SELECT" ? (
-              <Input id={field.key} name={field.key} required={field.required} type={field.type === "NUMBER" ? "number" : field.type === "URL" ? "url" : "text"} />
+            {field.type === "CHECKBOX" ? <input id={field.key} name={field.key} type="checkbox" value="yes" className="mt-2" /> : null}
+            {field.type !== "TEXTAREA" && field.type !== "SELECT" && field.type !== "RADIO" && field.type !== "CHECKBOX" ? (
+              <Input id={field.key} name={field.key} required={field.required} type={field.type === "NUMBER" ? "number" : field.type === "URL" ? "url" : field.type === "EMAIL" ? "email" : field.type === "DATE" ? "date" : field.type === "FILE" ? "file" : "text"} />
             ) : null}
           </div>
         );

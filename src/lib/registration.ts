@@ -24,7 +24,9 @@ export function validateFieldResponses(fields: Field[], responses: Record<string
     if (!value) continue;
     if (value.length > 2000) return { error: `${field.label} is too long.` };
     if (field.type === "URL" && !/^https?:\/\/\S+$/i.test(value)) return { error: `${field.label} must start with http:// or https://.` };
+    if (field.type === "EMAIL" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return { error: `${field.label} must be an email.` };
     if (field.type === "NUMBER" && Number.isNaN(Number(value))) return { error: `${field.label} must be a number.` };
+    if (field.type === "DATE" && Number.isNaN(Date.parse(value))) return { error: `${field.label} must be a date.` };
     if (field.type === "SELECT" && Array.isArray(field.options) && field.options.length > 0) {
       const options = field.options.map(String);
       if (!options.includes(value)) return { error: `Choose a valid option for ${field.label}.` };

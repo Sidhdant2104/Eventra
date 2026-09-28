@@ -2,6 +2,7 @@
 
 import { CertificateType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/authorize";
 import { certificatePublicId } from "@/lib/crypto";
 import { prisma } from "@/lib/db";
 import { notifyUser } from "@/lib/notifications";
@@ -24,7 +25,7 @@ export async function saveCertificateTemplate(eventId: string, input: {
 }) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot manage certificates." };
+  if (!access?.permissions.includes("CERTIFICATE_ISSUE")) return { ok: false as const, error: "You cannot manage certificates." };
   const name = input.name.trim();
   if (name.length < 2) return { ok: false as const, error: "Name the template." };
   const config = {
@@ -47,7 +48,7 @@ export async function saveCertificateTemplate(eventId: string, input: {
 export async function generateCertificates(eventId: string, templateId: string, userIds: string[]) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot issue certificates." };
+  if (!access?.permissions.includes("CERTIFICATE_ISSUE")) return { ok: false as const, error: "You cannot issue certificates." };
   const template = await prisma.certificateTemplate.findFirst({ where: { id: templateId, eventId } });
   if (!template) return { ok: false as const, error: "Template not found." };
   const uniqueIds = [...new Set(userIds)];
@@ -94,6 +95,9 @@ export async function generateCertificates(eventId: string, templateId: string, 
       } } : {}),
     });
   }
+  if (created > 0) {
+    await writeAudit({ actorId: user.id, action: "CERTIFICATE_ISSUED", targetType: "Event", targetId: eventId, scopeType: "EVENT", scopeId: eventId, metadata: { created } });
+  }
   revalidatePath(`/admin/events/${eventId}/certificates`);
   return { ok: true as const, created, skipped, missing: uniqueIds.length - eligible.length };
 }
@@ -101,11 +105,15 @@ export async function generateCertificates(eventId: string, templateId: string, 
 export async function revokeCertificate(eventId: string, certificateId: string, revoke: boolean) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot change certificates." };
+  const permission = revoke ? "CERTIFICATE_REVOKE" : "CERTIFICATE_ISSUE";
+  if (!access?.permissions.includes(permission)) return { ok: false as const, error: "You cannot change certificates." };
+  const certificate = await prisma.certificate.findFirst({ where: { id: certificateId, eventId } });
+  if (!certificate) return { ok: false as const, error: "Certificate not found." };
   await prisma.certificate.update({
-    where: { id: certificateId },
+    where: { id: certificate.id },
     data: { revokedAt: revoke ? new Date() : null },
   });
+  await writeAudit({ actorId: user.id, action: revoke ? "CERTIFICATE_REVOKED" : "CERTIFICATE_RESTORED", targetType: "Certificate", targetId: certificate.id, scopeType: "EVENT", scopeId: eventId });
   revalidatePath(`/admin/events/${eventId}/certificates`);
   return { ok: true as const };
 }

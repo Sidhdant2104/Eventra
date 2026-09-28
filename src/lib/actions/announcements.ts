@@ -15,7 +15,7 @@ export async function sendAnnouncement(eventId: string, input: {
 }) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot send announcements." };
+  if (!access?.permissions.includes("ANNOUNCEMENT_SEND")) return { ok: false as const, error: "You cannot send announcements." };
   const title = input.title.trim();
   const body = input.body.trim();
   if (title.length < 3 || body.length < 3) return { ok: false as const, error: "Add a title and a message." };

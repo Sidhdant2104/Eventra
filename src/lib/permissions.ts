@@ -1,5 +1,7 @@
 import { PlatformRole, Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { PERMISSIONS, allows, type Permission } from "@/lib/access-policy";
+import { heldGrants } from "@/lib/authorize";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -31,13 +33,23 @@ export async function getEventAccess(user: { id: string; role: PlatformRole }, e
     },
   });
   if (!event) return null;
-  if (user.role === "SUPER_ADMIN") return { event, level: "full" as const };
-  const clubAdmin = event.club.members.some((member) => member.userId === user.id && member.role === "CLUB_ADMIN");
-  if (clubAdmin) return { event, level: "full" as const };
-  const staff = event.staff.find((member) => member.userId === user.id);
-  if (staff?.role === "EVENT_MANAGER") return { event, level: "manage" as const };
-  if (staff?.role === "VOLUNTEER") return { event, level: "scan" as const };
-  return null;
+  const grants = await heldGrants(user);
+  const scope = { type: "EVENT" as const, id: event.id, clubId: event.clubId };
+  const permissions = (Object.keys(PERMISSIONS) as Permission[]).filter((permission) => allows(grants, permission, scope));
+  if (!permissions.includes("EVENT_VIEW")) return null;
+  const level = user.role === "SUPER_ADMIN" || allows(grants, "CLUB_EDIT", { type: "CLUB", id: event.clubId })
+    ? "full" as const
+    : permissions.includes("EVENT_EDIT")
+      ? "manage" as const
+      : "scan" as const;
+  return { event, level, permissions };
+}
+
+export async function requireEventPermission(eventId: string, permission: Permission) {
+  const user = await requireUser();
+  const access = await getEventAccess(user, eventId);
+  if (!access?.permissions.includes(permission)) redirect("/admin/events");
+  return { user, ...access };
 }
 
 export async function requireEventAccess(eventId: string, allowed: AccessLevel[] = ["full", "manage", "scan"]) {
@@ -48,12 +60,14 @@ export async function requireEventAccess(eventId: string, allowed: AccessLevel[]
 }
 
 export async function canAccessAdmin(user: CurrentUser) {
-  if (user.role !== "STUDENT") return true;
-  const [staff, club] = await Promise.all([
+  if (user.role === "SUPER_ADMIN") return true;
+  const [staff, club, grant, unit] = await Promise.all([
     prisma.eventStaff.findFirst({ where: { userId: user.id } }),
     prisma.clubMember.findFirst({ where: { userId: user.id, role: "CLUB_ADMIN" } }),
+    prisma.permissionGrant.findFirst({ where: { userId: user.id, revokedAt: null } }),
+    prisma.orgMembership.findFirst({ where: { userId: user.id, removedAt: null, unit: { archivedAt: null } } }),
   ]);
-  return Boolean(staff || club);
+  return Boolean(staff || club || grant || unit);
 }
 
 export async function requireAdmin() {
@@ -62,7 +76,7 @@ export async function requireAdmin() {
   return user;
 }
 
-export function canManageClub(user: { id: string; role: PlatformRole }, club: { members: { userId: string; role: string }[] }) {
+export function canManageClub(user: { id: string; role: PlatformRole }, club: { id?: string; members: { userId: string; role: string }[] }) {
   if (user.role === "SUPER_ADMIN") return true;
   return club.members.some((member) => member.userId === user.id && member.role === "CLUB_ADMIN");
 }

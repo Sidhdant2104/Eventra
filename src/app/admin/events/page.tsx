@@ -16,6 +16,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
         OR: [
           { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" } } } },
           { staff: { some: { userId: user.id } } },
+          { units: { some: { members: { some: { userId: user.id, removedAt: null } }, archivedAt: null } } },
         ],
       }),
     },

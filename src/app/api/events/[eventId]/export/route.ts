@@ -13,7 +13,7 @@ export async function GET(_request: Request, context: { params: Promise<{ eventI
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!access?.permissions.includes("REGISTRATIONS_EXPORT")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const registrations = await prisma.registration.findMany({
     where: { eventId },
     include: {

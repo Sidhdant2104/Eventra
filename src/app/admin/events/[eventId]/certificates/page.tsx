@@ -1,10 +1,10 @@
 import { CertificateManager } from "@/components/certificate-manager";
 import { prisma } from "@/lib/db";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 export default async function CertificatesAdminPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  await requireEventAccess(eventId, ["full", "manage"]);
+  await requireEventPermission(eventId, "CERTIFICATE_ISSUE");
   const [templates, participants, certificates] = await Promise.all([
     prisma.certificateTemplate.findMany({ where: { eventId }, orderBy: { createdAt: "desc" } }),
     prisma.registrationParticipant.findMany({

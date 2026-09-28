@@ -15,7 +15,9 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
     <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
       <ClubEditor club={club} members={club.members} />
       <div>
-        <h2 className="font-semibold">Events</h2>
+        <h2 className="font-semibold">People</h2>
+        <a className="mt-2 inline-block text-sm font-medium" href={`/admin/clubs/${club.id}/access`}>Teams and access</a>
+        <h2 className="mt-6 font-semibold">Events</h2>
         <ul className="mt-2 space-y-2 text-sm">
           {club.events.map((event) => <li key={event.id}><a className="font-medium" href={`/admin/events/${event.id}`}>{event.name}</a></li>)}
         </ul>

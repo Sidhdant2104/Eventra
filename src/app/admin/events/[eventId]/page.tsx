@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Card, StatusBadge } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 export default async function EventOverview({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  const { event } = await requireEventAccess(eventId);
+  const { event } = await requireEventPermission(eventId, "EVENT_VIEW");
   const [registered, checked] = await Promise.all([
     prisma.registrationParticipant.count({ where: { eventId, registration: { status: { not: "CANCELLED" } } } }),
     prisma.attendance.count({ where: { eventId } }),

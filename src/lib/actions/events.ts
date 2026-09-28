@@ -3,6 +3,7 @@
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { writeAudit, hasPermission } from "@/lib/authorize";
 import { BLOCK_TYPES, sanitizeSection, starterSections, type EditorSection } from "@/lib/blocks";
 import { prisma } from "@/lib/db";
 import { notifyMany } from "@/lib/notifications";
@@ -26,7 +27,7 @@ export async function createEvent(clubId: string, name: string) {
   const user = await requireUser();
   const club = await prisma.club.findUnique({ where: { id: clubId }, include: { members: true } });
   if (!club) return { ok: false as const, error: "Club not found." };
-  const allowed = user.role === "SUPER_ADMIN" || club.members.some((member) => member.userId === user.id && member.role === "CLUB_ADMIN");
+  const allowed = await hasPermission(user, "EVENT_CREATE", { type: "CLUB", id: club.id });
   if (!allowed) return { ok: false as const, error: "You can only create events for your club." };
   const trimmed = name.trim();
   if (trimmed.length < 3) return { ok: false as const, error: "Give the event a name." };
@@ -56,13 +57,14 @@ export async function createEvent(clubId: string, name: string) {
       },
     },
   });
+  await writeAudit({ actorId: user.id, action: "EVENT_CREATED", targetType: "Event", targetId: event.id, scopeType: "CLUB", scopeId: clubId, metadata: { name: trimmed } });
   redirect(`/admin/events/${event.id}/builder`);
 }
 
 export async function saveEventSettings(eventId: string, input: unknown) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot edit this event." };
+  if (!access?.permissions.includes("EVENT_MANAGE_SETTINGS")) return { ok: false as const, error: "You cannot edit this event." };
   const parsed = eventSettingsSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: issueMessage(parsed.error) };
   const startAt = parseCollegeDateTime(parsed.data.startAt);
@@ -112,7 +114,7 @@ export async function saveEventSettings(eventId: string, input: unknown) {
 export async function saveEventSections(eventId: string, sections: EditorSection[]) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot edit this event page." };
+  if (!access?.permissions.includes("EVENT_PAGE_EDIT")) return { ok: false as const, error: "You cannot edit this event page." };
   if (!Array.isArray(sections) || sections.length > 40) return { ok: false as const, error: "Too many sections." };
   try {
     const clean = sections.map((section, position) => ({
@@ -131,6 +133,7 @@ export async function saveEventSections(eventId: string, sections: EditorSection
   } catch (error) {
     return { ok: false as const, error: error instanceof Error ? error.message : "Could not save the page." };
   }
+  await writeAudit({ actorId: user.id, action: "EVENT_PAGE_MODIFIED", targetType: "Event", targetId: eventId, scopeType: "EVENT", scopeId: eventId });
   revalidatePath(`/events/${access.event.slug}`);
   revalidatePath(`/admin/events/${eventId}/builder`);
   return { ok: true as const };
@@ -139,7 +142,8 @@ export async function saveEventSections(eventId: string, sections: EditorSection
 export async function setEventStatus(eventId: string, status: "DRAFT" | "PUBLISHED" | "ARCHIVED") {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || (status === "ARCHIVED" && access.level !== "full") || access.level === "scan") {
+  const needed = status === "ARCHIVED" ? "EVENT_ARCHIVE" : status === "PUBLISHED" ? "EVENT_PUBLISH" : "EVENT_EDIT";
+  if (!access?.permissions.includes(needed)) {
     return { ok: false as const, error: "You cannot change this event's status." };
   }
   await prisma.event.update({ where: { id: eventId }, data: { status } });
@@ -155,6 +159,7 @@ export async function setEventStatus(eventId: string, status: "DRAFT" | "PUBLISH
       },
     );
   }
+  await writeAudit({ actorId: user.id, action: status === "PUBLISHED" ? "EVENT_PUBLISHED" : status === "ARCHIVED" ? "EVENT_ARCHIVED" : "EVENT_UNPUBLISHED", targetType: "Event", targetId: eventId, scopeType: "EVENT", scopeId: eventId });
   revalidatePath(`/events/${access.event.slug}`);
   revalidatePath("/explore");
   revalidatePath("/admin");
@@ -164,13 +169,14 @@ export async function setEventStatus(eventId: string, status: "DRAFT" | "PUBLISH
 export async function saveRegistrationField(eventId: string, input: unknown, fieldId?: string) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot edit registration fields." };
+  if (!access?.permissions.includes("EVENT_MANAGE_SETTINGS")) return { ok: false as const, error: "You cannot edit registration fields." };
   const parsed = fieldSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: issueMessage(parsed.error) };
-  const options = parsed.data.type === "SELECT"
+  const needsOptions = parsed.data.type === "SELECT" || parsed.data.type === "RADIO" || parsed.data.type === "MULTISELECT";
+  const options = needsOptions
     ? parsed.data.options.split(",").map((option) => option.trim()).filter(Boolean)
     : undefined;
-  if (parsed.data.type === "SELECT" && (!options || options.length < 2)) {
+  if (needsOptions && (!options || options.length < 2)) {
     return { ok: false as const, error: "Add at least two comma-separated options." };
   }
   const data = {
@@ -182,7 +188,9 @@ export async function saveRegistrationField(eventId: string, input: unknown, fie
     options: options ?? Prisma.JsonNull,
   };
   if (fieldId) {
-    await prisma.registrationField.update({ where: { id: fieldId }, data });
+    const existing = await prisma.registrationField.findFirst({ where: { id: fieldId, eventId } });
+    if (!existing) return { ok: false as const, error: "Field not found." };
+    await prisma.registrationField.update({ where: { id: existing.id }, data });
   } else {
     const count = await prisma.registrationField.count({ where: { eventId } });
     await prisma.registrationField.create({ data: { ...data, eventId, position: count } });
@@ -194,8 +202,10 @@ export async function saveRegistrationField(eventId: string, input: unknown, fie
 export async function deleteRegistrationField(eventId: string, fieldId: string) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot edit registration fields." };
-  await prisma.registrationField.delete({ where: { id: fieldId } });
+  if (!access?.permissions.includes("EVENT_MANAGE_SETTINGS")) return { ok: false as const, error: "You cannot edit registration fields." };
+  const existing = await prisma.registrationField.findFirst({ where: { id: fieldId, eventId } });
+  if (!existing) return { ok: false as const, error: "Field not found." };
+  await prisma.registrationField.delete({ where: { id: existing.id } });
   revalidatePath(`/admin/events/${eventId}/settings`);
   return { ok: true as const };
 }
@@ -203,9 +213,10 @@ export async function deleteRegistrationField(eventId: string, fieldId: string) 
 export async function assignStaff(eventId: string, email: string, role: "EVENT_MANAGER" | "VOLUNTEER") {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level !== "full") return { ok: false as const, error: "Only club admins can assign staff." };
+  if (!access?.permissions.includes("DELEGATE") || !access.permissions.includes("EVENT_EDIT")) return { ok: false as const, error: "Only someone who can delegate this event can assign staff." };
   const member = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
   if (!member) return { ok: false as const, error: "No account found for that email." };
+  if (member.id === user.id) return { ok: false as const, error: "You cannot change your own permissions." };
   await prisma.eventStaff.upsert({
     where: { eventId_userId: { eventId, userId: member.id } },
     update: { role },
@@ -220,7 +231,8 @@ export async function assignStaff(eventId: string, email: string, role: "EVENT_M
 export async function removeStaff(eventId: string, userId: string) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level !== "full") return { ok: false as const, error: "Only club admins can remove staff." };
+  if (!access?.permissions.includes("DELEGATE")) return { ok: false as const, error: "Only someone who can delegate this event can remove staff." };
+  if (userId === user.id) return { ok: false as const, error: "You cannot change your own permissions." };
   await prisma.eventStaff.deleteMany({ where: { eventId, userId } });
   revalidatePath(`/admin/events/${eventId}/settings`);
   return { ok: true as const };

@@ -2,11 +2,11 @@ import { EventSettingsForm, FieldManager, PublishControls, StaffManager } from "
 import { Card } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { formatDateTimeLocal } from "@/lib/format";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 export default async function SettingsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  const { event, level } = await requireEventAccess(eventId, ["full", "manage"]);
+  const { event, level } = await requireEventPermission(eventId, "EVENT_MANAGE_SETTINGS");
   const [clubs, fields, staff] = await Promise.all([
     prisma.club.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.registrationField.findMany({ where: { eventId }, orderBy: { position: "asc" } }),

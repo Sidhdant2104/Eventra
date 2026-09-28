@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/authorize";
 import { prisma } from "@/lib/db";
 import { notifyUser } from "@/lib/notifications";
 import { getEventAccess, requireUser } from "@/lib/permissions";
@@ -117,7 +118,7 @@ export async function cancelRegistration(registrationId: string) {
 export async function updateRegistrationStatus(eventId: string, registrationId: string, status: "CONFIRMED" | "WAITLISTED" | "CANCELLED" | "ATTENDED") {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access || access.level === "scan") return { ok: false as const, error: "You cannot change registrations." };
+  if (!access?.permissions.includes("REGISTRATIONS_MANAGE")) return { ok: false as const, error: "You cannot change registrations." };
   const registration = await prisma.registration.findFirst({
     where: { id: registrationId, eventId },
     include: { participants: true, event: true, user: true },
@@ -140,6 +141,7 @@ export async function updateRegistrationStatus(eventId: string, registrationId: 
   if (status === "CONFIRMED") {
     await notifyManySafe(registration.participants.map((participant) => participant.userId), registration.event.name, registration.code);
   }
+  await writeAudit({ actorId: user.id, action: "REGISTRATION_MODIFIED", targetType: "Registration", targetId: registration.id, scopeType: "EVENT", scopeId: eventId, metadata: { status } });
   revalidatePath(`/admin/events/${eventId}/registrations`);
   return { ok: true as const };
 }

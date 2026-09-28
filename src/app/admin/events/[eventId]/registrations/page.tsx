@@ -3,7 +3,7 @@ import { RegistrationTable } from "@/components/registration-table";
 import { EmptyState, Input, Select } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { formatWhen, yearLabel } from "@/lib/format";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 const PAGE_SIZE = 12;
 
@@ -15,7 +15,7 @@ export default async function RegistrationsAdminPage({
   searchParams: Promise<{ q?: string; status?: string; sort?: string; page?: string }>;
 }) {
   const { eventId } = await params;
-  await requireEventAccess(eventId, ["full", "manage"]);
+  await requireEventPermission(eventId, "REGISTRATIONS_VIEW");
   const query = await searchParams;
   const q = query.q?.trim() ?? "";
   const page = Math.max(1, Number(query.page) || 1);

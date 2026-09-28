@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Bell, Building2, CalendarDays, Compass, LayoutDashboard, LogOut, Ticket, Users } from "lucide-react";
+import { Award, Bell, Building2, CalendarDays, Compass, LayoutDashboard, LogOut, ScrollText, Ticket, Users } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -101,6 +101,7 @@ const adminGroups = [
     links: [
       { href: "/admin/clubs", label: "Clubs", icon: Building2, exact: false },
       { href: "/admin/academics", label: "Academics", icon: Building2, exact: false, super: true },
+      { href: "/admin/audit", label: "Audit log", icon: ScrollText, exact: false, super: true },
     ],
   },
 ];

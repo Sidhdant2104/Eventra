@@ -8,15 +8,31 @@ export const metadata = { title: "Overview" };
 
 export default async function AdminHome() {
   const user = await requireAdmin();
+  const visible = user.role === "SUPER_ADMIN" ? {} : {
+    OR: [
+      { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" as const } } } },
+      { staff: { some: { userId: user.id } } },
+      { units: { some: { archivedAt: null, members: { some: { userId: user.id, removedAt: null } } } } },
+    ],
+  };
+  const registrationVisible = user.role === "SUPER_ADMIN" ? {} : {
+    event: {
+      OR: [
+        { club: { members: { some: { userId: user.id, role: "CLUB_ADMIN" as const } } } },
+        { staff: { some: { userId: user.id, role: "EVENT_MANAGER" as const } } },
+        { units: { some: { archivedAt: null, permissions: { has: "REGISTRATIONS_VIEW" }, members: { some: { userId: user.id, removedAt: null } } } } },
+      ],
+    },
+  };
   const [events, upcomingEvents, registrations, attendance, certificates, recent, grouped, announcements] = await Promise.all([
-    prisma.event.count(),
-    prisma.event.findMany({ where: { status: "PUBLISHED", startAt: { gte: new Date() } }, include: { club: true }, orderBy: { startAt: "asc" }, take: 4 }),
-    prisma.registration.count({ where: { status: { not: "CANCELLED" } } }),
-    prisma.attendance.count(),
-    prisma.certificate.count({ where: { revokedAt: null } }),
-    prisma.registration.findMany({ include: { event: true, user: true, team: true }, orderBy: { createdAt: "desc" }, take: 6 }),
-    prisma.event.findMany({ include: { _count: { select: { participants: true } } }, orderBy: { startAt: "asc" } }),
-    prisma.announcement.findMany({ include: { event: true }, orderBy: { createdAt: "desc" }, take: 4 }),
+    prisma.event.count({ where: visible }),
+    prisma.event.findMany({ where: { ...visible, status: "PUBLISHED", startAt: { gte: new Date() } }, include: { club: true }, orderBy: { startAt: "asc" }, take: 4 }),
+    prisma.registration.count({ where: { status: { not: "CANCELLED" }, ...registrationVisible } }),
+    prisma.attendance.count({ where: { event: visible } }),
+    prisma.certificate.count({ where: { revokedAt: null, event: visible } }),
+    prisma.registration.findMany({ where: registrationVisible, include: { event: true, user: true, team: true }, orderBy: { createdAt: "desc" }, take: 6 }),
+    prisma.event.findMany({ where: visible, include: { _count: { select: { participants: true } } }, orderBy: { startAt: "asc" } }),
+    prisma.announcement.findMany({ where: { event: visible }, include: { event: true }, orderBy: { createdAt: "desc" }, take: 4 }),
   ]);
   const metrics = [
     ["Events", events, "/admin/events"],

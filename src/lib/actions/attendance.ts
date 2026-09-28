@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/authorize";
 import { prisma } from "@/lib/db";
 import { getEventAccess, requireUser } from "@/lib/permissions";
 import { parsePassToken } from "@/lib/utils";
@@ -9,7 +10,7 @@ import { formatWhen } from "@/lib/format";
 export async function lookupPass(eventId: string, raw: string) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access) return { ok: false as const, error: "You cannot scan for this event." };
+  if (!access?.permissions.includes("ATTENDANCE_SCAN") && !access?.permissions.includes("ATTENDANCE_VIEW")) return { ok: false as const, error: "You cannot scan for this event." };
   const token = parsePassToken(raw);
   if (!token) return { ok: true as const, state: "invalid" as const, message: "This QR code is not an NMIET One pass." };
   const pass = await prisma.qrPass.findUnique({
@@ -53,7 +54,7 @@ export async function lookupPass(eventId: string, raw: string) {
 export async function markAttendance(eventId: string, raw: string) {
   const user = await requireUser();
   const access = await getEventAccess(user, eventId);
-  if (!access) return { ok: false as const, error: "You cannot mark attendance for this event." };
+  if (!access?.permissions.includes("ATTENDANCE_SCAN")) return { ok: false as const, error: "You cannot mark attendance for this event." };
   const lookedUp = await lookupPass(eventId, raw);
   if (!lookedUp.ok) return lookedUp;
   if (lookedUp.state === "invalid") return { ok: false as const, error: lookedUp.message };
@@ -78,6 +79,7 @@ export async function markAttendance(eventId: string, raw: string) {
     if (checked >= pass.participant.registration.participants.length) {
       await prisma.registration.update({ where: { id: pass.participant.registrationId }, data: { status: "ATTENDED" } });
     }
+    await writeAudit({ actorId: user.id, action: "ATTENDANCE_MARKED", targetType: "User", targetId: pass.participant.userId, scopeType: "EVENT", scopeId: eventId });
     revalidatePath(`/admin/events/${eventId}/attendance`);
     return {
       ok: true as const,

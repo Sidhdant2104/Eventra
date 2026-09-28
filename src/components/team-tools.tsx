@@ -9,7 +9,7 @@ import { deleteTeam, inviteTeammate, leaveTeam, removeTeammate, searchStudents }
 type Field = {
   key: string;
   label: string;
-  type: "TEXT" | "TEXTAREA" | "SELECT" | "URL" | "NUMBER";
+  type: "TEXT" | "TEXTAREA" | "SELECT" | "URL" | "NUMBER" | "EMAIL" | "PHONE" | "MULTISELECT" | "RADIO" | "CHECKBOX" | "FILE" | "DATE";
   required: boolean;
   options: unknown;
   appliesTo: "SOLO" | "TEAM" | "BOTH";

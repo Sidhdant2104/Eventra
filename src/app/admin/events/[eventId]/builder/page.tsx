@@ -1,15 +1,13 @@
-import { notFound } from "next/navigation";
 import { BlockEditor } from "@/components/block-editor";
 import { PublishControls } from "@/components/event-settings";
 import type { BlockType, EditorSection } from "@/lib/blocks";
 import { BLOCK_TYPES } from "@/lib/blocks";
 import { prisma } from "@/lib/db";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 export default async function BuilderPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  const { event, level } = await requireEventAccess(eventId, ["full", "manage"]);
-  if (level === "scan") notFound();
+  const { event } = await requireEventPermission(eventId, "EVENT_PAGE_EDIT");
   const sections = await prisma.eventSection.findMany({ where: { eventId }, orderBy: { position: "asc" } });
   const initial: EditorSection[] = sections.filter((section) => BLOCK_TYPES.includes(section.type as BlockType)).map((section) => ({
     id: section.id,

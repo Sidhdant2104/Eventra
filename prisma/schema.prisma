@@ -104,6 +104,20 @@ enum FieldType {
   SELECT
   URL
   NUMBER
+  EMAIL
+  PHONE
+  MULTISELECT
+  RADIO
+  CHECKBOX
+  FILE
+  DATE
+}
+
+enum ScopeType {
+  SYSTEM
+  CLUB
+  EVENT
+  TEAM
 }
 
 enum FieldAppliesTo {
@@ -145,6 +159,11 @@ model User {
   notifications       Notification[]
   announcements       Announcement[]             @relation("AnnouncementAuthor")
   resetTokens         PasswordResetToken[]
+  orgMemberships      OrgMembership[]
+  permissionGrants    PermissionGrant[]          @relation("GrantSubject")
+  grantsIssued        PermissionGrant[]          @relation("GrantActor")
+  grantsRevoked       PermissionGrant[]          @relation("GrantRevoker")
+  auditLogs           AuditLog[]
 }
 
 model StudentProfile {
@@ -276,10 +295,15 @@ model Club {
   slug        String       @unique
   logo        String?
   description String?
+  banner      String?
+  website     String?
+  contactEmail String?
+  archivedAt  DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   members     ClubMember[]
   events      Event[]
+  units       OrgUnit[]
 }
 
 model ClubMember {
@@ -319,6 +343,8 @@ model Event {
   status               EventStatus      @default(DRAFT)
   registrationPrefix   String
   registrationSeq      Int              @default(0)
+  registrationOpensAt  DateTime?
+  eligibility          Json?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
@@ -334,10 +360,83 @@ model Event {
   templates        CertificateTemplate[]
   certificates     Certificate[]
   announcements    Announcement[]
+  units            OrgUnit[]
 
   @@index([status, startAt])
   @@index([clubId])
   @@index([featured])
+}
+
+model OrgUnit {
+  id         String          @id @default(cuid())
+  clubId     String?
+  eventId    String?
+  parentId   String?
+  name       String
+  permissions String[]
+  archivedAt DateTime?
+  createdAt  DateTime        @default(now())
+  club       Club?           @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  event      Event?          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  parent     OrgUnit?        @relation("OrgTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children   OrgUnit[]       @relation("OrgTree")
+  members    OrgMembership[]
+
+  @@index([clubId])
+  @@index([eventId])
+  @@index([parentId])
+}
+
+model OrgMembership {
+  id           String    @id @default(cuid())
+  unitId       String
+  userId       String
+  lead         Boolean   @default(false)
+  assignedById String
+  createdAt    DateTime  @default(now())
+  removedAt    DateTime?
+  unit         OrgUnit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, userId])
+  @@index([userId])
+}
+
+model PermissionGrant {
+  id          String    @id @default(cuid())
+  userId      String
+  permission  String
+  scopeType   ScopeType
+  scopeId     String    @default("")
+  orgUnitId   String?
+  grantedById String
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  revokedById String?
+  user        User      @relation("GrantSubject", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy   User      @relation("GrantActor", fields: [grantedById], references: [id])
+  revokedBy   User?     @relation("GrantRevoker", fields: [revokedById], references: [id])
+
+  @@index([userId, revokedAt])
+  @@index([scopeType, scopeId])
+  @@index([orgUnitId])
+}
+
+model AuditLog {
+  id         String     @id @default(cuid())
+  actorId    String
+  action     String
+  targetType String
+  targetId   String?
+  scopeType  ScopeType?
+  scopeId    String?
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+  actor      User       @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([scopeType, scopeId])
+  @@index([actorId])
 }
 
 model EventStaff {

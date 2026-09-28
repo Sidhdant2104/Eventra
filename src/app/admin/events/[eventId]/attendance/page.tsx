@@ -1,7 +1,7 @@
 import { Card, Input, Select } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 export default async function AttendancePage({
   params,
@@ -11,7 +11,7 @@ export default async function AttendancePage({
   searchParams: Promise<{ q?: string; filter?: string }>;
 }) {
   const { eventId } = await params;
-  await requireEventAccess(eventId);
+  await requireEventPermission(eventId, "ATTENDANCE_VIEW");
   const query = await searchParams;
   const q = query.q?.trim().toLowerCase() ?? "";
   const participants = await prisma.registrationParticipant.findMany({

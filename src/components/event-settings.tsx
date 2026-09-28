@@ -105,7 +105,7 @@ export function FieldManager({ eventId, fields }: { eventId: string; fields: { i
       }}>
         <Input name="label" placeholder="Question label" required />
         <Input name="key" placeholder="key_name" required />
-        <Select name="type" defaultValue="TEXT"><option value="TEXT">Text</option><option value="TEXTAREA">Long text</option><option value="URL">URL</option><option value="NUMBER">Number</option><option value="SELECT">Select</option></Select>
+        <Select name="type" defaultValue="TEXT"><option value="TEXT">Text</option><option value="TEXTAREA">Long text</option><option value="EMAIL">Email</option><option value="PHONE">Phone</option><option value="URL">URL</option><option value="NUMBER">Number</option><option value="DATE">Date</option><option value="SELECT">Dropdown</option><option value="RADIO">Radio</option><option value="CHECKBOX">Checkbox</option><option value="MULTISELECT">Multi-select</option><option value="FILE">File</option></Select>
         <Select name="appliesTo" defaultValue="BOTH"><option value="BOTH">Solo and team</option><option value="SOLO">Solo only</option><option value="TEAM">Team only</option></Select>
         <Input name="options" placeholder="Options, comma separated" className="md:col-span-2" />
         <label className="flex items-center gap-2 text-sm"><input name="required" type="checkbox" /> Required</label>

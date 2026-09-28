@@ -82,7 +82,7 @@ export const clubSchema = z.object({
 export const fieldSchema = z.object({
   label: z.string().trim().min(2).max(80),
   key: z.string().trim().regex(/^[a-z][a-z0-9_]{1,40}$/, "Use a short lowercase key"),
-  type: z.enum(["TEXT", "TEXTAREA", "SELECT", "URL", "NUMBER"]),
+  type: z.enum(["TEXT", "TEXTAREA", "SELECT", "URL", "NUMBER", "EMAIL", "PHONE", "MULTISELECT", "RADIO", "CHECKBOX", "FILE", "DATE"]),
   required: z.boolean(),
   options: z.string().trim().max(500),
   appliesTo: z.enum(["SOLO", "TEAM", "BOTH"]),

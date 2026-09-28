@@ -1,10 +1,10 @@
 import { AnnouncementForm } from "@/components/announcement-form";
 import { prisma } from "@/lib/db";
-import { requireEventAccess } from "@/lib/permissions";
+import { requireEventPermission } from "@/lib/permissions";
 
 export default async function AnnouncementsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  await requireEventAccess(eventId, ["full", "manage"]);
+  await requireEventPermission(eventId, "ANNOUNCEMENT_SEND");
   const [people, history] = await Promise.all([
     prisma.registrationParticipant.findMany({
       where: { eventId, registration: { status: { not: "CANCELLED" } } },
